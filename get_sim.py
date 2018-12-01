@@ -1,5 +1,5 @@
 import numpy as np
-import pylab as plt
+import matplotlib.pyplot as plt
 import fisher_dict
 import sys
 import utils
@@ -43,7 +43,7 @@ Nsims=10
 for i in range(Nsims):
     epsilon_PPPP= np.sqrt(covmat_PPPP_b)*np.random.randn(len(covmat_PPPP_b))
     Db_obs= Db+ epsilon_PPPP
-    
+
     if i==0:
         plt.figure()
         plt.subplot(2,1,1)
@@ -58,4 +58,4 @@ for i in range(Nsims):
         plt.show()
 
     chi2,dof= chisquare(Db_obs, Db, covmat_PPPP_b)
-    print 'chi2',chi2,'dof',dof
+    print('chi2',chi2,'dof',dof)
