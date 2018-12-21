@@ -7,7 +7,6 @@ def simulation(setup):
     Simulate CMB power spectrum given a set of cosmological parameters and noise level.
     """
     import numpy as np
-    import matplotlib.pyplot as plt
     from beyondCV import utils
 
     logger = logging.getLogger()
@@ -16,37 +15,47 @@ def simulation(setup):
         return np.sum((Db_obs-Db_th)**2/var), len(Db_obs)
 
     # Get simulation parameters
-    p = setup["simulation"]["cosmo. parameters"]
-    logger.debug("Cosmological parameters {}".format(p))
+    cosmo = setup["cosmo. parameters"]
+    logger.debug("Cosmological parameters {}".format(cosmo))
 
-    totCL=utils.get_theory_cls(p)
-    Dl=totCL[:,0]
-    ls=np.arange(2,p['lmax'])
-    Dl=Dl[2:len(ls)+2]
+    # Get experiment setup
+    experiment = setup["experiment"]
+    logger.debug("Experiment parameters {}".format(experiment))
+    lmin, lmax = experiment["lmin"], experiment["lmax"]
+    delta_l = experiment["delta_l"]
 
-    lb,Db=utils.bin_spectrum(p,ls,Dl)
-    freq_Planck,DNl_array_Planck=utils.get_noise(p,'Planck')
+    totCL = utils.get_theory_cls(cosmo, lmax)
+    Dl = totCL[:, 0]
+    ls = np.arange(2, lmax)
+    Dl = Dl[2:len(ls)+2]
+
+    lb, Db = utils.bin_spectrum(Dl, ls, lmin, lmax, delta_l)
+    freq_Planck, DNl_array_Planck = utils.get_noise(experiment, "Planck")
     freq_Planck=list(freq_Planck)
     freq_Planck.append('all')
 
-    ns={}
-    DNl={}
-
-    plt.semilogy()
-    plt.plot(ls,Dl)
+    ns = {}
+    DNl = {}
     for freq in freq_Planck:
-        ns['Planck_%s'%freq]=2.
-        DNl['Planck_%s'%freq]=DNl_array_Planck[freq]*ns['Planck_%s'%freq]
-        plt.plot(ls,DNl_array_Planck[freq],label='noise %s'%freq)
-    plt.ylabel(r'$D_{\ell}$',fontsize=18)
-    plt.xlabel(r'$\ell$',fontsize=18)
-    plt.ylim(1,5*10**4)
-    plt.xlim(1,3900)
-    plt.legend()
-    plt.show()
+        key = "Planck_%s" % freq
+        ns[key]=2.
+        DNl[key]=DNl_array_Planck[freq]*ns[key]
 
-    covmat_PPPP=utils.cov('Planck_all','Planck_all','Planck_all','Planck_all',ns,ls,Dl,DNl,p)
-    lb,covmat_PPPP_b=utils.bin_variance(p,ls,covmat_PPPP)
+    if setup.get("do_plot"):
+        import matplotlib.pyplot as plt
+        plt.semilogy()
+        plt.plot(ls, Dl)
+        for freq in freq_Planck:
+            plt.plot(ls,DNl_array_Planck[freq],label='noise %s'%freq)
+        plt.ylabel(r'$D_{\ell}$',fontsize=18)
+        plt.xlabel(r'$\ell$',fontsize=18)
+        plt.ylim(1,5*10**4)
+        plt.xlim(1,3900)
+        plt.legend()
+        plt.show()
+    return
+    covmat_PPPP = utils.cov('Planck_all','Planck_all','Planck_all','Planck_all',ns,ls,Dl,DNl,experiment["fsky"])
+    lb,covmat_PPPP_b = utils.bin_variance(p,ls,covmat_PPPP)
 
     # Nsims=10
     # for i in range(Nsims):
@@ -89,7 +98,7 @@ def main():
     with open(args.yaml_file, "r") as stream:
         setup = yaml.load(stream)
 
-    simulation(setup)
+    simulation(setup["simulation"])
 
 # script:
 if __name__ == "__main__":
