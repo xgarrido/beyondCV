@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import logging
+import argparse
+
 # Simulation
 def simulation():
     import numpy as np
@@ -66,6 +69,19 @@ def simulation():
 
 # Main function:
 def main():
+    parser = argparse.ArgumentParser(description = "A python to go beyond CMB cosmic variance")
+    parser.add_argument("--log", default = "warning",
+                        choices = ["critical", "error", "warning", "info", "debug"],
+                        help = "logging level")
+    parser.add_argument("-y", "--yaml-file", help="Yaml file holding sim/minization setup",
+                        default=None, required=True)
+    args = parser.parse_args()
+
+    # Setting logging level
+    numeric_level = getattr(logging, args.log.upper(), None)
+    logging.basicConfig(format = "[%(levelname)s: %(module)s::%(funcName)s:%(lineno)d] %(message)s",
+                        level = numeric_level)
+
     simulation()
 
 # script:
