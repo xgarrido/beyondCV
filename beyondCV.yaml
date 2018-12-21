@@ -1,0 +1,35 @@
+# Simulation parameters
+simulation:
+  cosmo. parameters:
+    #H0=67.5 # use theta instead
+    theta100         : 1.04164
+    ln_ten_to_ten_As : 3.058
+    ombh2            : 0.02212
+    omch2            : 0.1210
+    tau              : 0.058
+    ns               : 0.9649
+    mnu              : 0.06
+    omk              : 0
+    r                : 0
+    Alens            : 1.
+
+# #Experiment
+
+# lmin=2
+# lmax=3000
+# fsky=0.4
+# delta_l=30
+
+# nside=512
+
+
+
+# survey=['Planck','SO']
+
+# freq_Planck=[100,143,217]
+# noise_Planck=[77.4,33.0,46.80]
+# beam_Planck=[9.66,7.22,4.90]
+
+# freq_all_SO=[27,39,93,145,225,280]
+# freq_SO=[93,145,225]
+# use_external_file_SO=True

@@ -1,22 +1,24 @@
 #!/usr/bin/env python
 
 import logging
-import argparse
 
-# Simulation
-def simulation():
+def simulation(setup):
+    """
+    Simulate CMB power spectrum given a set of cosmological parameters and noise level.
+    """
     import numpy as np
     import matplotlib.pyplot as plt
-    import fisher_dict
-    import sys
-    import utils
-    import os
+    from beyondCV import utils
+
+    logger = logging.getLogger()
 
     def chisquare(Db_obs, Db_th, var):
         return np.sum((Db_obs-Db_th)**2/var), len(Db_obs)
 
-    p = fisher_dict.flipperDict()
-    p.read_from_file(sys.argv[1])
+    # Get simulation parameters
+    p = setup["simulation"]["cosmo. parameters"]
+    logger.debug("Cosmological parameters {}".format(p))
+
     totCL=utils.get_theory_cls(p)
     Dl=totCL[:,0]
     ls=np.arange(2,p['lmax'])
@@ -46,29 +48,30 @@ def simulation():
     covmat_PPPP=utils.cov('Planck_all','Planck_all','Planck_all','Planck_all',ns,ls,Dl,DNl,p)
     lb,covmat_PPPP_b=utils.bin_variance(p,ls,covmat_PPPP)
 
-    Nsims=10
-    for i in range(Nsims):
-        epsilon_PPPP= np.sqrt(covmat_PPPP_b)*np.random.randn(len(covmat_PPPP_b))
-        Db_obs= Db+ epsilon_PPPP
+    # Nsims=10
+    # for i in range(Nsims):
+    #     epsilon_PPPP= np.sqrt(covmat_PPPP_b)*np.random.randn(len(covmat_PPPP_b))
+    #     Db_obs= Db+ epsilon_PPPP
 
-        if i==0:
-            plt.figure()
-            plt.subplot(2,1,1)
-            plt.ylabel(r'$D_{\ell}$',fontsize=18)
-            plt.xlabel(r'$\ell$',fontsize=18)
-            plt.errorbar(lb,Db)
-            plt.errorbar(lb,Db_obs,np.sqrt(covmat_PPPP_b),fmt='.')
-            plt.subplot(2,1,2)
-            plt.ylabel(r'$\Delta D_{\ell}$',fontsize=18)
-            plt.xlabel(r'$\ell$',fontsize=18)
-            plt.errorbar(lb,Db_obs-Db,np.sqrt(covmat_PPPP_b),fmt='.')
-            plt.show()
+    #     if i==0:
+    #         plt.figure()
+    #         plt.subplot(2,1,1)
+    #         plt.ylabel(r'$D_{\ell}$',fontsize=18)
+    #         plt.xlabel(r'$\ell$',fontsize=18)
+    #         plt.errorbar(lb,Db)
+    #         plt.errorbar(lb,Db_obs,np.sqrt(covmat_PPPP_b),fmt='.')
+    #         plt.subplot(2,1,2)
+    #         plt.ylabel(r'$\Delta D_{\ell}$',fontsize=18)
+    #         plt.xlabel(r'$\ell$',fontsize=18)
+    #         plt.errorbar(lb,Db_obs-Db,np.sqrt(covmat_PPPP_b),fmt='.')
+    #         plt.show()
 
-        chi2,dof= chisquare(Db_obs, Db, covmat_PPPP_b)
-        print('chi2',chi2,'dof',dof)
+    #     chi2,dof= chisquare(Db_obs, Db, covmat_PPPP_b)
+    #     print('chi2',chi2,'dof',dof)
 
 # Main function:
 def main():
+    import argparse
     parser = argparse.ArgumentParser(description = "A python to go beyond CMB cosmic variance")
     parser.add_argument("--log", default = "warning",
                         choices = ["critical", "error", "warning", "info", "debug"],
@@ -82,7 +85,11 @@ def main():
     logging.basicConfig(format = "[%(levelname)s: %(module)s::%(funcName)s:%(lineno)d] %(message)s",
                         level = numeric_level)
 
-    simulation()
+    import yaml
+    with open(args.yaml_file, "r") as stream:
+        setup = yaml.load(stream)
+
+    simulation(setup)
 
 # script:
 if __name__ == "__main__":
