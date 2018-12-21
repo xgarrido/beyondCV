@@ -31,7 +31,7 @@ def simulation(setup):
 
     lb, Db = utils.bin_spectrum(Dl, ls, lmin, lmax, delta_l)
     freq_Planck, DNl_array_Planck = utils.get_noise(experiment, "Planck")
-    freq_Planck=list(freq_Planck)
+    freq_Planck = list(freq_Planck)
     freq_Planck.append('all')
 
     ns = {}
@@ -53,30 +53,29 @@ def simulation(setup):
         plt.xlim(1,3900)
         plt.legend()
         plt.show()
-    return
-    covmat_PPPP = utils.cov('Planck_all','Planck_all','Planck_all','Planck_all',ns,ls,Dl,DNl,experiment["fsky"])
-    lb,covmat_PPPP_b = utils.bin_variance(p,ls,covmat_PPPP)
 
-    # Nsims=10
-    # for i in range(Nsims):
-    #     epsilon_PPPP= np.sqrt(covmat_PPPP_b)*np.random.randn(len(covmat_PPPP_b))
-    #     Db_obs= Db+ epsilon_PPPP
+    covmat_PPPP = utils.cov('Planck_all','Planck_all','Planck_all','Planck_all', ns, ls, Dl, DNl, experiment["fsky"])
+    lb, covmat_PPPP_b = utils.bin_variance(experiment, ls, covmat_PPPP)
 
-    #     if i==0:
-    #         plt.figure()
-    #         plt.subplot(2,1,1)
-    #         plt.ylabel(r'$D_{\ell}$',fontsize=18)
-    #         plt.xlabel(r'$\ell$',fontsize=18)
-    #         plt.errorbar(lb,Db)
-    #         plt.errorbar(lb,Db_obs,np.sqrt(covmat_PPPP_b),fmt='.')
-    #         plt.subplot(2,1,2)
-    #         plt.ylabel(r'$\Delta D_{\ell}$',fontsize=18)
-    #         plt.xlabel(r'$\ell$',fontsize=18)
-    #         plt.errorbar(lb,Db_obs-Db,np.sqrt(covmat_PPPP_b),fmt='.')
-    #         plt.show()
+    Nsims=10
+    for i in range(Nsims):
+        epsilon_PPPP= np.sqrt(covmat_PPPP_b)*np.random.randn(len(covmat_PPPP_b))
+        Db_obs= Db+ epsilon_PPPP
 
-    #     chi2,dof= chisquare(Db_obs, Db, covmat_PPPP_b)
-    #     print('chi2',chi2,'dof',dof)
+        if i==0 and setup.get("do_plot"):
+            plt.figure()
+            plt.subplot(2,1,1)
+            plt.ylabel(r'$D_{\ell}$',fontsize=18)
+            plt.errorbar(lb,Db)
+            plt.errorbar(lb,Db_obs,np.sqrt(covmat_PPPP_b),fmt='.')
+            plt.subplot(2,1,2)
+            plt.ylabel(r'$\Delta D_{\ell}$',fontsize=18)
+            plt.xlabel(r'$\ell$',fontsize=18)
+            plt.errorbar(lb,Db_obs-Db,np.sqrt(covmat_PPPP_b),fmt='.')
+            plt.show()
+
+        chi2,dof = chisquare(Db_obs, Db, covmat_PPPP_b)
+        print('chi2',chi2,'dof',dof)
 
 # Main function:
 def main():
