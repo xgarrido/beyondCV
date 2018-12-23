@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
-import os
-import string
-
 def ask_for( key ):
-    s = raw_input( "flipperDict: enter value for '%s': " % key )
+    s = input( "flipperDict: enter value for '%s': " % key )
     try:
         val = eval(s)
     except NameError:
@@ -24,9 +21,9 @@ class flipperDict( dict ):
     def __getitem__( self, key ):
         if key not in self:
             if self.ask:
-                print "flipperDict: parameter '%s' not found" % key
+                print("flipperDict: parameter '%s' not found" % key)
                 val = ask_for( key )
-                print "flipperDict: setting '%s' = %s" % (key,repr(val))
+                print("flipperDict: setting '%s' = %s" % (key,repr(val)))
                 dict.__setitem__( self, key, val )
             else:
                 return None
@@ -43,20 +40,20 @@ class flipperDict( dict ):
             line = s[0]
             s = line.split('\\')
             if len(s) > 1:
-                old = string.join([old, s[0]])
+                old = "".join([old, s[0]])
                 continue
             else:
-                line = string.join([old, s[0]])
+                line = "".join([old, s[0]])
                 old = ''
-            for i in xrange(len(line)):
+            for i in range(len(line)):
                 if line[i]!=' ':
                     line = line[i:]
                     break
             exec(line)
             s = line.split('=')
             if len(s) != 2:
-                print "Error parsing line:"
-                print line
+                print("Error parsing line:")
+                print(line)
                 continue
             key = s[0].strip()
             val = eval(s[1].strip()) # XXX:make safer
@@ -67,7 +64,7 @@ class flipperDict( dict ):
 
     def write_to_file( self, filename, mode = 'w' ):
         f = open( filename, mode )
-        keys = self.keys()
+        keys = list(self.keys())
         keys.sort()
         for key in keys:
             f.write( "%s = %s\n" % (key,repr(self[key])) )
@@ -76,9 +73,9 @@ class flipperDict( dict ):
     writeToFile = write_to_file
 
     def cmp( self, otherDict ):
-        
+
         diff = []
-        ks = self.keys()
+        ks = list(self.keys())
         for k in ks:
             try:
                 if otherDict[k] == self.params[k]:
