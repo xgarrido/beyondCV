@@ -1,28 +1,24 @@
 import numpy as np
-import pylab as plt
 import camb
-import fisher_dict
-import sys
 import V3calc as V3
-import os
 
-def get_noise(p,exp):
-    l=np.arange(2,p['lmax'])
-    if p['use_external_file_%s'%exp] is None:
-        sigma=np.array(p['noise_%s'%exp])
-        beam_FWHM=np.array(p['beam_%s'%exp])
-        freq=np.array(p['freq_%s'%exp])
-        sigma_rad=sigma*np.pi/(60*180)
-        beam_FWHM_rad=beam_FWHM*np.pi/(60*180)
-        beam=beam_FWHM_rad/np.sqrt(8*np.log(2))
-        DNl_array={}
-        DNl_all=0
+def get_noise(p, exp):
+    l = np.arange(2, p['lmax'])
+    if p.get("use_external_file_%s"%exp) is None:
+        sigma = np.array(p['noise_%s'%exp])
+        beam_FWHM = np.array(p['beam_%s'%exp])
+        freq = np.array(p['freq_%s'%exp])
+        sigma_rad = np.deg2rad(sigma)/60
+        beam_FWHM_rad = np.deg2rad(beam_FWHM)/60
+        beam = beam_FWHM_rad/np.sqrt(8*np.log(2))
+        DNl_array = {}
+        DNl_all = 0
         count=0
         for f in freq:
-            DNl_array[f]=sigma_rad[count]**2*np.exp(l*(l+1)*beam[count]**2)*l*(l+1)/(2*np.pi)
-            DNl_all+=1/DNl_array[f]
-            count+=1
-        DNl_array['all']=1/DNl_all
+            DNl_array[f] = sigma_rad[count]**2*np.exp(l*(l+1)*beam[count]**2)*l*(l+1)/(2*np.pi)
+            DNl_all += 1/DNl_array[f]
+            count += 1
+        DNl_array['all'] = 1/DNl_all
     else:
         print('use external file')
         freq_all=np.array(p['freq_all_%s'%exp])
@@ -38,12 +34,12 @@ def get_noise(p,exp):
                     DNl_all+=1/DNl_array[f1]
             count+=1
         DNl_array['all']=1/DNl_all
-    return(freq,DNl_array)
+    return freq, DNl_array
 
-def get_theory_cls(p):
+def get_theory_cls(p, lmax):
     pars = camb.CAMBparams()
     camb.lensing.ALens.value=p['Alens']
-    if p['H0'] is not None:
+    if p.get('H0'):
         pars.set_cosmology(H0=p['H0'], ombh2=p['ombh2'], omch2=p['omch2'], mnu=p['mnu'], omk=p['omk'], tau=p['tau'])
     else:
         pars.set_cosmology(H0=None,cosmomc_theta=p['theta100']/100., ombh2=p['ombh2'], omch2=p['omch2'], mnu=p['mnu'], omk=p['omk'], tau=p['tau'])
@@ -55,26 +51,23 @@ def get_theory_cls(p):
     print('As',np.exp(p['ln_ten_to_ten_As'])/1e10)
     print('ns',p['ns'])
 
-    pars.set_for_lmax(p['lmax'], lens_potential_accuracy=0)
+    pars.set_for_lmax(lmax, lens_potential_accuracy=0)
     results = camb.get_results(pars)
-    powers =results.get_cmb_power_spectra(pars, CMB_unit='muK')
+    powers = results.get_cmb_power_spectra(pars, CMB_unit='muK')
     totCL=powers['total']
     return(totCL)
 
-def bin_spectrum(p,l,dl):
-    lmin=p['lmin']
-    lmax=p['lmax']
-    delta_l=p['delta_l']
-    Nbin=np.int(lmax/delta_l)
-    db=np.zeros(Nbin)
-    lb=np.zeros(Nbin)
+def bin_spectrum(dl, l, lmin, lmax, delta_l):
+    Nbin = np.int(lmax/delta_l)
+    db = np.zeros(Nbin)
+    lb = np.zeros(Nbin)
     for i in range(Nbin):
-        id=np.where( (l> i*delta_l) & (l< (i+1)*delta_l))
-        db[i]=np.mean(dl[id])
-        lb[i]=np.mean(l[id])
-    id=np.where(lb>lmin)
-    lb,db=lb[id],db[id]
-    return(lb,db)
+        id = np.where((l> i*delta_l) & (l< (i+1)*delta_l))
+        db[i] = np.mean(dl[id])
+        lb[i] = np.mean(l[id])
+    id = np.where(lb>lmin)
+    lb,db = lb[id],db[id]
+    return lb, db
 
 def bin_variance(p,l,vl):
     lmin=p['lmin']
@@ -164,8 +157,8 @@ def g(a,b,c,d,ns):
     result/=(ns[a]*ns[b]*(ns[c]-delta2(a,c))*(ns[d]-delta2(b,d)))
     return result
 
-def cov(a,b,c,d,ns,ls,Dl,DNl,p):
-    fac= 1./((2*ls+1)*p['fsky'])
+def cov(a,b,c,d,ns,ls,Dl,DNl,fsky):
+    fac= 1./((2*ls+1)*fsky)
 
     C=2*Dl**2+Dl*((f(a,c,b,d,ns)+f(a,d,b,c,ns))*DNl[a]+(f(b,d,a,c,ns)+f(b,c,a,d,ns))*DNl[b])+DNl[a]*DNl[b]*(g(a,c,b,d,ns)+g(a,d,b,c,ns))
     return fac*C

@@ -1,61 +1,71 @@
 #!/usr/bin/env python
 
 import logging
-import argparse
 
-# Simulation
-def simulation():
+def simulation(setup):
+    """
+    Simulate CMB power spectrum given a set of cosmological parameters and noise level.
+    """
     import numpy as np
-    import matplotlib.pyplot as plt
-    import fisher_dict
-    import sys
-    import utils
-    import os
+    from beyondCV import utils
+
+    logger = logging.getLogger()
 
     def chisquare(Db_obs, Db_th, var):
         return np.sum((Db_obs-Db_th)**2/var), len(Db_obs)
 
-    p = fisher_dict.flipperDict()
-    p.read_from_file(sys.argv[1])
-    totCL=utils.get_theory_cls(p)
-    Dl=totCL[:,0]
-    ls=np.arange(2,p['lmax'])
-    Dl=Dl[2:len(ls)+2]
+    # Get simulation parameters
+    cosmo = setup["cosmo. parameters"]
+    logger.debug("Cosmological parameters {}".format(cosmo))
 
-    lb,Db=utils.bin_spectrum(p,ls,Dl)
-    freq_Planck,DNl_array_Planck=utils.get_noise(p,'Planck')
-    freq_Planck=list(freq_Planck)
+    # Get experiment setup
+    experiment = setup["experiment"]
+    logger.debug("Experiment parameters {}".format(experiment))
+    lmin, lmax = experiment["lmin"], experiment["lmax"]
+    delta_l = experiment["delta_l"]
+
+    totCL = utils.get_theory_cls(cosmo, lmax)
+    Dl = totCL[:, 0]
+    ls = np.arange(2, lmax)
+    Dl = Dl[2:len(ls)+2]
+
+    lb, Db = utils.bin_spectrum(Dl, ls, lmin, lmax, delta_l)
+    freq_Planck, DNl_array_Planck = utils.get_noise(experiment, "Planck")
+    freq_Planck = list(freq_Planck)
     freq_Planck.append('all')
 
-    ns={}
-    DNl={}
-
-    plt.semilogy()
-    plt.plot(ls,Dl)
+    ns = {}
+    DNl = {}
     for freq in freq_Planck:
-        ns['Planck_%s'%freq]=2.
-        DNl['Planck_%s'%freq]=DNl_array_Planck[freq]*ns['Planck_%s'%freq]
-        plt.plot(ls,DNl_array_Planck[freq],label='noise %s'%freq)
-    plt.ylabel(r'$D_{\ell}$',fontsize=18)
-    plt.xlabel(r'$\ell$',fontsize=18)
-    plt.ylim(1,5*10**4)
-    plt.xlim(1,3900)
-    plt.legend()
-    plt.show()
+        key = "Planck_%s" % freq
+        ns[key]=2.
+        DNl[key]=DNl_array_Planck[freq]*ns[key]
 
-    covmat_PPPP=utils.cov('Planck_all','Planck_all','Planck_all','Planck_all',ns,ls,Dl,DNl,p)
-    lb,covmat_PPPP_b=utils.bin_variance(p,ls,covmat_PPPP)
+    if setup.get("do_plot"):
+        import matplotlib.pyplot as plt
+        plt.semilogy()
+        plt.plot(ls, Dl)
+        for freq in freq_Planck:
+            plt.plot(ls,DNl_array_Planck[freq],label='noise %s'%freq)
+        plt.ylabel(r'$D_{\ell}$',fontsize=18)
+        plt.xlabel(r'$\ell$',fontsize=18)
+        plt.ylim(1,5*10**4)
+        plt.xlim(1,3900)
+        plt.legend()
+        plt.show()
+
+    covmat_PPPP = utils.cov('Planck_all','Planck_all','Planck_all','Planck_all', ns, ls, Dl, DNl, experiment["fsky"])
+    lb, covmat_PPPP_b = utils.bin_variance(experiment, ls, covmat_PPPP)
 
     Nsims=10
     for i in range(Nsims):
         epsilon_PPPP= np.sqrt(covmat_PPPP_b)*np.random.randn(len(covmat_PPPP_b))
         Db_obs= Db+ epsilon_PPPP
 
-        if i==0:
+        if i==0 and setup.get("do_plot"):
             plt.figure()
             plt.subplot(2,1,1)
             plt.ylabel(r'$D_{\ell}$',fontsize=18)
-            plt.xlabel(r'$\ell$',fontsize=18)
             plt.errorbar(lb,Db)
             plt.errorbar(lb,Db_obs,np.sqrt(covmat_PPPP_b),fmt='.')
             plt.subplot(2,1,2)
@@ -64,11 +74,12 @@ def simulation():
             plt.errorbar(lb,Db_obs-Db,np.sqrt(covmat_PPPP_b),fmt='.')
             plt.show()
 
-        chi2,dof= chisquare(Db_obs, Db, covmat_PPPP_b)
+        chi2,dof = chisquare(Db_obs, Db, covmat_PPPP_b)
         print('chi2',chi2,'dof',dof)
 
 # Main function:
 def main():
+    import argparse
     parser = argparse.ArgumentParser(description = "A python to go beyond CMB cosmic variance")
     parser.add_argument("--log", default = "warning",
                         choices = ["critical", "error", "warning", "info", "debug"],
@@ -82,7 +93,11 @@ def main():
     logging.basicConfig(format = "[%(levelname)s: %(module)s::%(funcName)s:%(lineno)d] %(message)s",
                         level = numeric_level)
 
-    simulation()
+    import yaml
+    with open(args.yaml_file, "r") as stream:
+        setup = yaml.load(stream)
+
+    simulation(setup["simulation"])
 
 # script:
 if __name__ == "__main__":
