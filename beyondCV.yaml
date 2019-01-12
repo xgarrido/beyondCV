@@ -1,34 +1,80 @@
+# Misc
+do_plot: False
+
 # Simulation parameters
 simulation:
   cosmo. parameters:
     #H0=67.5 # use theta instead
-    theta100         : 1.04164
-    ln_ten_to_ten_As : 3.058
-    ombh2            : 0.02212
-    omch2            : 0.1210
-    tau              : 0.058
-    ns               : 0.9649
-    mnu              : 0.06
-    omk              : 0
-    r                : 0
-    Alens            : 1.
+    cosmomc_theta : 0.0104164
+    As            : 2.128494467439464e-09
+    ombh2         : 0.02212
+    omch2         : 0.1210
+    ns            : 0.9649
+    tau           : &tau 0.058
+    mnu           : &mnu 0.06
+    omk           : &omk 0
+    r             : &r 0
+    ALens         : &ALens 1.
 
-  experiment:
-    lmin    : 2
-    lmax    : 3000
-    delta_l : 30
-    fsky    : 0.4
+experiment:
+  lmin    : 2
+  lmax    : 3000
+  delta_l : 30
+  fsky    : 0.4
 
-    survey:
-      - Planck
-      - SO
+  survey:
+    - Planck
+    - SO
 
-    freq_Planck: [100, 143, 217] # GHz
-    noise_Planck: [77.4, 33.0, 46.8]
-    beam_Planck: [9.66, 7.22, 4.90]
+  freq_Planck: [100, 143, 217] # GHz
+  noise_Planck: [77.4, 33.0, 46.8]
+  beam_Planck: [9.66, 7.22, 4.90]
 
-    freq_all_SO: [27, 39, 93, 145, 225, 280]
-    freq_SO: 93, [145, 225] # GHz
-    use_external_file_SO: True
+  freq_all_SO: [27, 39, 93, 145, 225, 280]
+  freq_SO: [93, 145, 225] # GHz
+  use_external_file_SO: True
 
-  do_plot: True
+# Cobaya setup
+cobaya:
+  debug: False
+  force: True
+  force_reproducible: False
+
+  params:
+    # Fixed
+    tau   : *tau
+    mnu   : *mnu
+    omk   : *omk
+    r     : *r
+    ALens : *ALens
+    # Sampled
+    cosmomc_theta:
+      prior:
+        min: 0.0103
+        max: 0.0105
+    As:
+      prior:
+        min: 2.0e-9
+        max: 2.2e-9
+    ns:
+      prior:
+        min: 0.9
+        max: 1.1
+    ombh2:
+      prior:
+        min: 0.017
+        max: 0.027
+    omch2:
+      prior:
+        min: 0.09
+        max: 0.15
+
+  theory:
+    camb:
+      stop_at_error: False
+
+  sampler:
+    minuit:
+      ignore_prior: True
+
+  output: minimize.d/minimize

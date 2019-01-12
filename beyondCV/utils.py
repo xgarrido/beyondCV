@@ -1,5 +1,4 @@
 import numpy as np
-import camb
 import V3calc as V3
 
 def get_noise(p, exp):
@@ -36,56 +35,71 @@ def get_noise(p, exp):
         DNl_array['all']=1/DNl_all
     return freq, DNl_array
 
-def get_theory_cls(p, lmax):
-    pars = camb.CAMBparams()
-    camb.lensing.ALens.value=p['Alens']
-    if p.get('H0'):
-        pars.set_cosmology(H0=p['H0'], ombh2=p['ombh2'], omch2=p['omch2'], mnu=p['mnu'], omk=p['omk'], tau=p['tau'])
-    else:
-        pars.set_cosmology(H0=None,cosmomc_theta=p['theta100']/100., ombh2=p['ombh2'], omch2=p['omch2'], mnu=p['mnu'], omk=p['omk'], tau=p['tau'])
+# def get_theory_cls(p, lmax):
+#     import camb
+#     pars = camb.CAMBparams()
+#     camb.lensing.ALens.value=p['Alens']
+#     if p.get('H0'):
+#         pars.set_cosmology(H0=p['H0'], ombh2=p['ombh2'], omch2=p['omch2'], mnu=p['mnu'], omk=p['omk'], tau=p['tau'])
+#     else:
+#         pars.set_cosmology(H0=None,cosmomc_theta=p['theta100']/100., ombh2=p['ombh2'], omch2=p['omch2'], mnu=p['mnu'], omk=p['omk'], tau=p['tau'])
 
-    pars.InitPower.set_params(As=np.exp(p['ln_ten_to_ten_As'])/1e10,ns=p['ns'], r=p['r'])
-    print('theta',p['theta100']/100.)
-    print('ombh2',p['ombh2'])
-    print('omch2',p['omch2'])
-    print('As',np.exp(p['ln_ten_to_ten_As'])/1e10)
-    print('ns',p['ns'])
+#     pars.InitPower.set_params(As=np.exp(p['ln_ten_to_ten_As'])/1e10,ns=p['ns'], r=p['r'])
+#     print('theta',p['theta100']/100.)
+#     print('ombh2',p['ombh2'])
+#     print('omch2',p['omch2'])
+#     print('As',np.exp(p['ln_ten_to_ten_As'])/1e10)
+#     print('ns',p['ns'])
 
-    pars.set_for_lmax(lmax, lens_potential_accuracy=0)
-    results = camb.get_results(pars)
-    powers = results.get_cmb_power_spectra(pars, CMB_unit='muK')
-    totCL=powers['total']
-    return(totCL)
+#     pars.set_for_lmax(lmax, lens_potential_accuracy=0)
+#     results = camb.get_results(pars)
+#     powers = results.get_cmb_power_spectra(pars, CMB_unit='muK')
+#     totCL=powers['total']
+#     return(totCL)
+
+def get_theory_cls(setup, lmax):
+    # Get simulation parameters
+    simu = setup["simulation"]
+    cosmo = simu["cosmo. parameters"]
+    # Get cobaya setup
+    from copy import deepcopy
+    info = deepcopy(setup["cobaya"])
+    info["params"] = cosmo
+    # Fake likelihood so far
+    info["likelihood"] = {"one": None}
+    from cobaya.model import get_model
+    model = get_model(info)
+
+    model.likelihood.theory.needs(cl={"tt": lmax})
+    model.logposterior({}) # parameters are fixed
+    Dls = model.likelihood.theory.get_cl(ell_factor=True)
+    return Dls["tt"]
 
 def bin_spectrum(dl, l, lmin, lmax, delta_l):
     Nbin = np.int(lmax/delta_l)
     db = np.zeros(Nbin)
     lb = np.zeros(Nbin)
     for i in range(Nbin):
-        id = np.where((l> i*delta_l) & (l< (i+1)*delta_l))
-        db[i] = np.mean(dl[id])
-        lb[i] = np.mean(l[id])
-    id = np.where(lb>lmin)
-    lb,db = lb[id],db[id]
+        idx = np.where((l> i*delta_l) & (l< (i+1)*delta_l))
+        db[i] = np.mean(dl[idx])
+        lb[i] = np.mean(l[idx])
+    idx = np.where(lb>lmin)
+    lb,db = lb[idx],db[idx]
     return lb, db
 
-def bin_variance(p,l,vl):
-    lmin=p['lmin']
-    lmax=p['lmax']
-    delta_l=p['delta_l']
-    Nbin=np.int(lmax/delta_l)
-    vb=np.zeros(Nbin)
-    lb=np.zeros(Nbin)
+def bin_variance(vl, l, lmin, lmax, delta_l):
+    Nbin = np.int(lmax/delta_l)
+    vb = np.zeros(Nbin)
+    lb = np.zeros(Nbin)
     for i in range(Nbin):
-        id=np.where( (l> i*delta_l) & (l< (i+1)*delta_l))
-        vb[i]=np.sum(1/vl[id])
-        lb[i]=np.mean(l[id])
+        idx = np.where((l>i*delta_l) & (l<(i+1)*delta_l))
+        vb[i] = np.sum(1/vl[idx])
+        lb[i] = np.mean(l[idx])
     vb=1/vb
 
-    id=np.where(lb>lmin)
-    lb,vb=lb[id],vb[id]
-
-    return(lb,vb)
+    idx = np.where(lb>lmin)
+    lb, vb = lb[idx], vb[idx]
+    return lb, vb
 
 def writeSpectrum(l,Dl,fileName):
 
