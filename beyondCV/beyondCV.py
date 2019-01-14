@@ -28,8 +28,8 @@ def simulation(setup):
     DNl = {}
     for freq in freq_Planck:
         key = "Planck_%s" % freq
-        ns[key]=2.
-        DNl[key]=DNl_array_Planck[freq]*ns[key]
+        ns[key] = 2.
+        DNl[key] = DNl_array_Planck[freq]*ns[key]
 
     if setup.get("do_plot"):
         import matplotlib.pyplot as plt
