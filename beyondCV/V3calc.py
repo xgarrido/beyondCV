@@ -16,7 +16,7 @@ def so_V3_LA_beams():
     beam_LAC_280 = 0.9
     return(np.array([beam_LAC_27,beam_LAC_39,beam_LAC_93,beam_LAC_145,beam_LAC_225,beam_LAC_280]))
 
-def so_V3_LA_noise(sensitivity_mode,f_sky,ell_max,delta_ell=1,beam_corrected=False):
+def so_V3_LA_noise(sensitivity_mode,f_sky,ell_min,ell_max,delta_ell=1,beam_corrected=False):
     ## retuns noise curves, including the impact of the beam for the SO large aperature telescopes
     # sensitivity_mode
     #     0: threshold,
@@ -70,7 +70,7 @@ def so_V3_LA_noise(sensitivity_mode,f_sky,ell_max,delta_ell=1,beam_corrected=Fal
     
     ####################################################################
     ## make the ell array for the output noise curves
-    ell = np.arange(2,ell_max,delta_ell)
+    ell = np.arange(ell_min,ell_max,delta_ell)
     
     ####################################################################
     ###   CALCULATE N(ell) for Temperature

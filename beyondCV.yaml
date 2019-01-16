@@ -17,10 +17,9 @@ simulation:
     ALens         : &ALens 1.
 
 experiment:
-  lmin    : 2
-  lmax    : 3000
-  delta_l : 30
-  fsky    : 0.4
+  lmin : 2
+  lmax : 3000
+  fsky : 0.4
 
   survey:
     - Planck

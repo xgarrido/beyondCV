@@ -1,8 +1,8 @@
 import numpy as np
-import V3calc as V3
+from beyondCV import V3calc as V3
 
 def get_noise(p, exp):
-    l = np.arange(2, p['lmax'])
+    l = np.arange(p['lmin'], p['lmax'])
     if p.get("use_external_file_%s"%exp) is None:
         sigma = np.array(p['noise_%s'%exp])
         beam_FWHM = np.array(p['beam_%s'%exp])
@@ -21,7 +21,7 @@ def get_noise(p, exp):
     else:
         print('use external file')
         freq_all=np.array(p['freq_all_%s'%exp])
-        ell,N_ell_T_LA,N_ell_P_LA,Map_white_noise_levels=V3.so_V3_LA_noise(2,p['fsky'],p['lmax'],delta_ell=1,beam_corrected=True)
+        ell,N_ell_T_LA,N_ell_P_LA,Map_white_noise_levels=V3.so_V3_LA_noise(2,p['fsky'],p['lmin'],p['lmax'],delta_ell=1,beam_corrected=True)
         freq=np.array(p['freq_%s'%exp])
         DNl_array={}
         DNl_all=0
@@ -176,3 +176,56 @@ def cov(a,b,c,d,ns,ls,Dl,DNl,fsky):
 
     C=2*Dl**2+Dl*((f(a,c,b,d,ns)+f(a,d,b,c,ns))*DNl[a]+(f(b,d,a,c,ns)+f(b,c,a,d,ns))*DNl[b])+DNl[a]*DNl[b]*(g(a,c,b,d,ns)+g(a,d,b,c,ns))
     return fac*C
+
+def svd_pow(A, exponent):
+    E, V = np.linalg.eigh(A)
+    return np.einsum("...ab,...b,...cb->...ac",V,E**exponent,V)
+
+
+def fisher_planck(setup):
+    experiment = setup["experiment"]
+    lmin, lmax = experiment["lmin"], experiment["lmax"]
+    ls = np.arange(lmin, lmax)
+
+    from beyondCV import utils
+    from copy import deepcopy
+
+    params=["cosmomc_theta", "As", "omch2", "ns", "ombh2"]
+    epsilon=0.01
+    deriv={}
+    for p in params:
+        value=setup["simulation"]["cosmo. parameters"][p]
+        setup_mod=deepcopy(setup)
+        setup_mod["simulation"]["cosmo. parameters"][p]= (1-epsilon)*value
+        Dltt_minus = utils.get_theory_cls(setup_mod, lmax)
+        Dltt_minus = Dltt_minus[lmin:lmax]
+        setup_mod=deepcopy(setup)
+        setup_mod["simulation"]["cosmo. parameters"][p]= (1+epsilon)*value
+        Dltt_plus = utils.get_theory_cls(setup_mod, lmax)
+        Dltt_plus = Dltt_plus[lmin:lmax]
+        deriv[p]= (Dltt_plus-Dltt_minus)/(2*epsilon*value)
+
+    Dltt = utils.get_theory_cls(setup, lmax)
+    Dltt = Dltt[lmin:lmax]
+
+    freq_Planck, DNl_array_Planck = utils.get_noise(experiment, "Planck")
+    freq_Planck = list(freq_Planck)
+    freq_Planck.append('all')
+
+    ns = {}
+    DNl = {}
+    for freq in freq_Planck:
+        key = "Planck_%s" % freq
+        ns[key]=2.
+        DNl[key]=DNl_array_Planck[freq]*ns[key]
+
+    covmat_PPPP = utils.cov("Planck_all","Planck_all","Planck_all","Planck_all", ns, ls, Dltt, DNl, experiment["fsky"])
+
+    nparam=len(params)
+    fisher=np.zeros((nparam,nparam))
+    for count1, p1 in enumerate(params):
+        for count2, p2 in enumerate(params):
+            fisher[count1,count2]=np.sum(covmat_PPPP**-1*deriv[p1]*deriv[p2])
+    cov=np.linalg.inv(fisher)
+    for count, p in enumerate(params):
+        print(p,setup_mod["simulation"]["cosmo. parameters"][p],np.sqrt(cov[count,count]))
