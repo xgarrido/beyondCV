@@ -277,15 +277,15 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 * Simons Observatory ⊗ Planck
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SO.likelihood")
-  params_SOxP = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SOxP.likelihood")
-  params_P    = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*_P.likelihood")
+  params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_2000", "*SO.likelihood")
+  params_SOxP = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_2000", "*SOxP.likelihood")
+  params_P    = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_2000", "*_P.likelihood")
   params_SO.shape, params_SOxP.shape, params_P.shape
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[86]:
+# Out[47]:
 : ((971, 6), (971, 6), (971, 6))
 :end:
 
@@ -304,14 +304,14 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+RESULTS:
 :results:
-# Out[78]:
-[[file:./obipy-resources/Bl8AS5.png]]
+# Out[49]:
+[[file:./obipy-resources/AkEgmH.png]]
 :end:
 
 #+BEGIN_SRC ipython :session bcv :results none
   lines = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
            [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
-           [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], ["tot"]]
+           [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], [r"$\sigma$(SOxSO + PxP - 2 SOxP"]]
   table = np.stack([np.mean(params_SO, axis=0),
                     np.mean(params_SOxP, axis=0),
                     np.mean(params_P, axis=0),
@@ -331,59 +331,31 @@ cosmo. parameters /i.e./ the systematics from minimization.
 #+END_SRC
 
 #+RESULTS:
+|                               | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|-------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$(SOxSO)                  |            0.0104165 |    2.12888e-09 |       0.964796 |               0.022119 |               0.121061 |               1.00019 |
+| $\mu$(SOxP)                   |            0.0104165 |    2.12863e-09 |       0.964918 |              0.0221197 |               0.121011 |               1.00034 |
+| $\mu$(PxP)                    |            0.0104164 |    2.12876e-09 |       0.964918 |               0.022122 |               0.121043 |               1.00003 |
+| $\sigma$(SOxSO)               |          4.35923e-06 |    1.19063e-11 |     0.00529269 |            0.000197395 |             0.00208537 |             0.0319118 |
+| $\sigma$(SOxP)                |          4.70511e-06 |    1.28073e-11 |     0.00574473 |            0.000196329 |             0.00236035 |             0.0321642 |
+| $\sigma$(PxP)                 |          5.16462e-06 |    1.32325e-11 |     0.00592473 |            0.000214703 |             0.00238011 |             0.0327516 |
+| $\sigma$(SOxSO - PxP)         |          2.99731e-06 |    7.16794e-12 |     0.00314853 |            0.000122405 |             0.00133315 |             0.0201569 |
+| $\sigma$(SOxSO - SOxP)        |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |             0.0126795 |
+| $\sigma$(SOxSO + PxP - 2 SOxP |          3.05013e-06 |    9.43821e-12 |     0.00429037 |            0.000118191 |             0.00217506 |             0.0185606 |
+
+#+CAPTION: Results for \ell \in [2; 3000]
 |                        | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
 |------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
-| $\mu$(SOxSO)           |            0.0104165 |    2.12888e-09 |       0.964796 |               0.022119 |               0.121061 |               1.00019 |
-| $\mu$(SOxP)            |            0.0104165 |    2.12863e-09 |       0.964918 |              0.0221197 |               0.121011 |               1.00034 |
-| $\mu$(PxP)             |            0.0104164 |    2.12876e-09 |       0.964918 |               0.022122 |               0.121043 |               1.00003 |
-| $\sigma$(SOxSO)        |          4.35923e-06 |    1.19063e-11 |     0.00529269 |            0.000197395 |             0.00208537 |             0.0319118 |
-| $\sigma$(SOxP)         |          4.70511e-06 |    1.28073e-11 |     0.00574473 |            0.000196329 |             0.00236035 |             0.0321642 |
-| $\sigma$(PxP)          |          5.16462e-06 |    1.32325e-11 |     0.00592473 |            0.000214703 |             0.00238011 |             0.0327516 |
-| $\sigma$(SOxSO - PxP)  |          2.99731e-06 |    7.16794e-12 |     0.00314853 |            0.000122405 |             0.00133315 |             0.0201569 |
-| $\sigma$(SOxSO - SOxP) |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |             0.0126795 |
-| tot                    |          3.05013e-06 |    9.43821e-12 |     0.00429037 |            0.000118191 |             0.00217506 |             0.0185606 |
-
-
-
-
-| $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
-|----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
-|            0.0104163 |     2.1288e-09 |       0.964831 |              0.0221165 |               0.121037 |              0.998797 |
-|            0.0104162 |    2.12874e-09 |       0.964837 |              0.0221241 |               0.121029 |               1.00012 |
-|            0.0104161 |    2.12891e-09 |       0.964766 |              0.0221283 |               0.121065 |              0.999338 |
-|          3.30158e-06 |    8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |             0.0259158 |
-|          4.13856e-06 |    1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |             0.0260542 |
-|          4.88563e-06 |    1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |             0.0249852 |
-|          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |              0.024773 |
-|          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |             0.0210134 |
+| $\mu$(SOxSO)           |            0.0104163 |     2.1288e-09 |       0.964831 |              0.0221165 |               0.121037 |              0.998797 |
+| $\mu$(SOxP)            |            0.0104162 |    2.12874e-09 |       0.964837 |              0.0221241 |               0.121029 |               1.00012 |
+| $\mu$(PxP)             |            0.0104161 |    2.12891e-09 |       0.964766 |              0.0221283 |               0.121065 |              0.999338 |
+| $\sigma$(SOxSO)        |          3.30158e-06 |    8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |             0.0259158 |
+| $\sigma$(SOxP)         |          4.13856e-06 |    1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |             0.0260542 |
+| $\sigma$(PxP)          |          4.88563e-06 |    1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |             0.0249852 |
+| $\sigma$(SOxSO - PxP)  |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |              0.024773 |
+| $\sigma$(SOxSO - SOxP) |          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |             0.0210134 |
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  np.sqrt(np.mean((params_SO-params_P)**2, axis=0))
-#+END_SRC
-
-#+RESULTS:
-:results:
-# Out[90]:
-#+BEGIN_EXAMPLE
-  array([3.76838567e-06, 9.58264856e-12, 4.06086871e-03, 1.72355839e-04,
-  1.81610221e-03, 2.47789402e-02])
-#+END_EXAMPLE
-:end:
-
-#+BEGIN_SRC ipython :session bcv :results raw drawer
-  np.std(params_SO-params_P, axis=0)
-#+END_SRC
-
-#+RESULTS:
-:results:
-# Out[91]:
-#+BEGIN_EXAMPLE
-  array([3.76191588e-06, 9.58206477e-12, 4.06034254e-03, 1.71957421e-04,
-  1.81588484e-03, 2.47730260e-02])
-#+END_EXAMPLE
-:end:
-
-#+BEGIN_SRC ipython :session :results raw drawer
   plt.semilogy()
   x = np.arange(5)
   plt.plot(x, np.std(params_SO-params_P, axis=0)[:-1], "o")
@@ -396,20 +368,7 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+RESULTS:
 :results:
-# Out[37]:
-: <matplotlib.legend.Legend at 0x7f78ebf4aeb8>
-[[file:./obipy-resources/YpLA07.png]]
-:end:
-
-#+BEGIN_SRC ipython :session bcv :results raw drawer
-  np.std((params_SO[:,:-1] + params_P[:,:-1] - 2*params_SOxP[:,:-1]), axis=0)
-#+END_SRC
-
-#+RESULTS:
-:results:
-# Out[79]:
-#+BEGIN_EXAMPLE
-  array([1.07947422e-11, 8.40766608e-23, 1.40824400e-05, 2.58359804e-08,
-  3.05292616e-06])
-#+END_EXAMPLE
+# Out[52]:
+: <matplotlib.legend.Legend at 0x7f1ed30b4d68>
+[[file:./obipy-resources/Qdn0t9.png]]
 :end:
