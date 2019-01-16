@@ -254,13 +254,15 @@ cosmo. parameters /i.e./ the systematics from minimization.
   table = np.append(lines, table, axis=1)
 #+END_SRC
 
-#+BEGIN_SRC ipython :session bcv :results raw
+#+BEGIN_SRC ipython :session bcv :results raw drawer
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
 #+RESULTS:
-# Out[62]:
+:results:
+# Out[63]:
 : <IPython.core.display.HTML object>
+:end:
 
 #+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
@@ -309,7 +311,7 @@ cosmo. parameters /i.e./ the systematics from minimization.
 #+BEGIN_SRC ipython :session bcv :results none
   lines = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
            [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
-           [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], [r"$\sigma$(SOxSO + PxP - 2 SOxP"]]
+           [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], [r"$\sigma$(SOxSO + PxP - 2 SOxP)"]]
   table = np.stack([np.mean(params_SO, axis=0),
                     np.mean(params_SOxP, axis=0),
                     np.mean(params_P, axis=0),
