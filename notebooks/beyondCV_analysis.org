@@ -6,6 +6,7 @@
   import matplotlib.pyplot as plt
   import pandas as pd
   import numpy as np
+  from getdist import plots, MCSamples
   plt.rcParams["text.usetex"] = True
 #+END_SRC
 
@@ -137,8 +138,8 @@ Get duration statistics
 
 ** Show input values of cosmo. parameters
 #+BEGIN_SRC ipython :session bcv :results none
+  ref = [1.04164/100, np.exp(3.058)/1e10, 0.9649, 0.02212, 0.1210]
   def show_ref(g):
-      ref = [1.04164/100, np.exp(3.058)/1e10, 0.9649, 0.02212, 0.1210]
       for i, r in enumerate(ref):
           kwargs = dict(color="gray", ls="--", lw=1)
           for ax in g.subplots[:,i]:
@@ -150,8 +151,6 @@ Get duration statistics
 *** Cosmo. parameters distribution
 #+BEGIN_SRC ipython :session bcv :results none
   params = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/unbinned")
-
-  from getdist import plots, MCSamples
   samples = MCSamples(samples=params, names=labels)
 #+END_SRC
 
@@ -225,6 +224,56 @@ Get duration statistics
 ** Results from 100 simulations
 Simulations are all the same (seed is 31415) and we estimate the intrinsic variance on
 cosmo. parameters /i.e./ the systematics from minimization.
+
+#+BEGIN_SRC ipython :session bcv :results nones
+  params = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/100_sims_syst")
+  samples = MCSamples(samples=params, names=labels)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  g = plots.getSubplotPlotter()
+  g.settings.colormap_scatter = "inferno"
+  g.triangle_plot(samples, params=labels[:-1],
+                  plot_3d_with_param="$\chi^2/\mathrm{ndf}$", scatter_size=20)
+  show_ref(g)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[38]:
+[[file:./obipy-resources/AJvxQD.png]]
+:end:
+
+#+BEGIN_SRC ipython :session bcv :results none
+  min_mean = np.mean(params, axis=0)
+  min_std  = np.std(params, axis=0)
+  lines = [[r"$\mu$"], [r"$\sigma$"]]
+  table = np.stack([min_mean, min_std])
+  table = np.append(lines, table, axis=1)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  from IPython.display import HTML, display
+  import tabulate
+  display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[17]:
+: <IPython.core.display.HTML object>
+:end:
+
+#+BEGIN_SRC ipython :session bcv :results raw output :export none
+  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|          | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|----------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$    |            0.0104275 |    2.10469e-09 |       0.975453 |              0.0224105 |               0.116425 |              0.975523 |
+| $\sigma$ |          8.08209e-08 |    3.69492e-13 |    0.000129202 |            6.52134e-06 |            7.14235e-05 |           3.21921e-06 |
+
 
 * Simons Observatory ⊗ Planck
 #+BEGIN_SRC ipython :session bcv :results raw drawer
