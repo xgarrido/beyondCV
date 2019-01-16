@@ -1,0 +1,398 @@
+#+TITLE: Beyond Cosmic Variance
+
+* Check minimization
+Parse =qsub= output files
+#+BEGIN_SRC ipython :session pcp :results none
+  import os, glob
+
+  path =r"/home/garrido/Workdir/CMB/analysis/beyondCV/script"
+  all_files = glob.glob(os.path.join(path, "*.o*"))
+
+  chi2_theory = []
+  chi2_start  = []
+  success     = []
+  surveys     = []
+  start_time  = []
+  stop_time   = []
+
+  def date2time(line):
+      import pandas as pd
+      time = line.split(" ", maxsplit=3)[-1]
+      time = time[:-5].strip()
+      return pd.to_datetime(time, format="%c")
+
+  for f in all_files:
+      find_start = False
+      success += [False]
+      with open(f) as stream:
+          for line in stream:
+              if "DEBUG: survey" in line:
+                  survey = line.split("=")[1].strip()
+                  if survey == "SO" or survey == "P":
+                    survey += "x" + survey
+                  surveys += [survey]
+              if "chi2(theo)/ndf" in line:
+                  if survey in line:
+                      chi2_theory += [float(line.split("=")[1].strip())]
+              if "chi2/ndf" in line and not find_start:
+                  chi2_start += [float(line.split("=")[1].strip())]
+                  find_start = True
+              if "Finished succesfully." in line:
+                  success[-1] = True
+              if "Started on" in line:
+                  start_time += [date2time(line)]
+              if "Ended on" in line:
+                  stop_time += [date2time(line)]
+  print("INFO: Read {} files".format(len(all_files)))
+#+END_SRC
+
+Convert =list= into =pandas.DataFrame=
+#+BEGIN_SRC ipython :session pcp :results drawer
+  import numpy as np
+  import pandas as pd
+  df = pd.DataFrame({"duration": np.array(stop_time)-np.array(start_time),
+                     "chi2_theory": chi2_theory,
+                     "chi2_start": chi2_start,
+                     "success": success})
+  df.head()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[152]:
+#+BEGIN_EXAMPLE
+  duration  chi2_theory  chi2_start  success
+  0 00:18:22     0.977054    1.327345     True
+  1 00:31:34     0.977054    1.472700    False
+  2 00:14:12     0.977054    6.900759     True
+  3 00:18:42     0.977054    7.013102     True
+  4 00:27:40     0.977054    2.224125    False
+#+END_EXAMPLE
+:end:
+
+Get number of sucessful minimization
+#+BEGIN_SRC ipython :session pcp :results drawer
+  np.sum(df.success)
+#+END_SRC
+
+Get duration statistics
+#+BEGIN_SRC ipython :session pcp :results drawer
+  df.duration.describe()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[150]:
+#+BEGIN_EXAMPLE
+  count                        97
+  mean     0 days 00:20:10.329896
+  std      0 days 00:08:08.127261
+  min             0 days 00:05:13
+  25%             0 days 00:14:12
+  50%             0 days 00:18:22
+  75%             0 days 00:25:45
+  max             0 days 00:45:59
+  Name: duration, dtype: object
+#+END_EXAMPLE
+:end:
+
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  import numpy as np
+  import matplotlib.pyplot as plt
+
+  # Convert time series into pandas dataframe
+  import pandas as pd
+  df = np.array(stop_time) - np.array(start_time)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  # chi2_theory = np.array(chi2_theory)
+  # chi2_start = np.array(chi2_start)
+  # success = np.array(success)
+
+  # plt.figure()
+  # plt.hist(chi2_theory[success], alpha=0.5, density=True, label="succesfully")
+  # plt.hist(chi2_theory[~success], alpha=0.5, density=True, label="unsuccesfully")
+  # plt.legend()
+
+  # plt.figure()
+  # plt.hist(chi2_start[success], alpha=0.5, density=True)
+  # plt.hist(chi2_start[~success], alpha=0.5, density=True)
+
+  # print("Theory")
+  # print(" success - mean = ", np.mean(chi2_theory[success]))
+  # print(" success - std = ", np.std(chi2_theory[success]))
+  # print("!success - mean = ", np.mean(chi2_theory[~success]))
+  # print("!success - std = ", np.std(chi2_theory[~success]))
+
+  # print("Start")
+  # print(" success - mean = ", np.mean(chi2_start[success]))
+  # print(" success - std = ", np.std(chi2_start[success]))
+  # print("!success - mean = ", np.mean(chi2_start[~success]))
+  # print("!success - std = ", np.std(chi2_start[~success]))
+
+  # plt.show()
+#+END_SRC
+* Plot cosmological parameters distribution
+** Cosmo. parameters LaTeX labels
+#+BEGIN_SRC ipython :session pcp :results none
+  labels = [r"$\theta_\mathrm{MC}$",
+            r"$A_\mathrm{s}$",
+            r"$n_\mathrm{s}$",
+            r"$\Omega_\mathrm{b}h^2$",
+            r"$\Omega_\mathrm{c}h^2$",
+            r"$\chi^2/\mathrm{ndf}$"]
+#+END_SRC
+
+** Get cosmo. parameters from output file
+#+BEGIN_SRC ipython :session pcp :results none
+  def get_params(path, pattern="*.likelihood"):
+      import os, glob
+      all_files = glob.glob(os.path.join(path, pattern))
+      # Sort alphabetically
+      all_files.sort()
+
+      header = pd.read_csv(all_files[0], delim_whitespace=True).columns[1:]
+      df = pd.concat((pd.read_table(f, delim_whitespace=True) for f in all_files))
+
+      # Remove '#' in header
+      df.drop(df.columns[[-1,]], axis=1, inplace=True)
+      df.columns = header
+      df.insert(value=df.chi2/2/1944, column="chi2_ndf", loc=7)
+      params = np.array(df.iloc[:, 2:8])
+      return params
+#+END_SRC
+
+** Show input values of cosmo. parameters
+#+BEGIN_SRC ipython :session pcp :results none
+  def show_ref(g):
+      ref = [1.04164/100, np.exp(3.058)/1e10, 0.9649, 0.02212, 0.1210]
+      for i, r in enumerate(ref):
+          kwargs = dict(color="gray", ls="--", lw=1)
+          for ax in g.subplots[:,i]:
+              if ax: ax.axvline(r, **kwargs)
+          for ax in g.subplots[i,:i]:
+              if ax: ax.axhline(r, **kwargs)
+#+END_SRC
+
+** Cosmo. parameters distribution
+#+BEGIN_SRC ipython :session pcp :results none
+  %matplotlib inline
+  import matplotlib.pyplot as plt
+  import pandas as pd
+  import numpy as np
+  plt.rcParams["text.usetex"]=True
+
+  params = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/unbinned")
+
+  from getdist import plots, MCSamples
+  samples = MCSamples(samples=params, names=labels)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  g = plots.getSubplotPlotter()
+  g.settings.colormap = "inferno"
+  g.triangle_plot(samples, params=labels[:-1], shaded=True)
+  show_ref(g)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[70]:
+[[file:./obipy-resources/ECqULn.png]]
+:end:
+
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  g = plots.getSubplotPlotter()
+  g.settings.colormap_scatter = "inferno"
+  g.triangle_plot(samples, params=labels[:-1],
+                  plot_3d_with_param="$\chi^2/\mathrm{ndf}$", scatter_size=20)
+  show_ref(g)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[71]:
+[[file:./obipy-resources/fRDYwT.png]]
+:end:
+
+** Table of results
+
+#+BEGIN_SRC ipython :session pcp :results value
+  np.alen(params)
+#+END_SRC
+
+#+RESULTS:
+: # Out[72]:
+: : 638
+
+#+BEGIN_SRC ipython :session pcp :results none
+min_mean = np.mean(params, axis=0)
+min_std  = np.std(params, axis=0)
+fisher = np.array([5.1265507267143515e-06, 1.2854648947626772e-11, 0.005589724100405197, 0.00020382255228959767, 0.002334040314343261, 1.])
+#+END_SRC
+
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  from IPython.display import HTML, display
+  import tabulate
+  table = [min_mean, min_std, fisher, (min_std-fisher)/fisher]
+  display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[74]:
+: <IPython.core.display.HTML object>
+:end:
+
+#+BEGIN_SRC ipython :session pcp :results raw output :export none
+  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+| $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+|            0.0104162 |    2.12887e-09 |       0.964695 |              0.0221223 |                0.12108 |              0.999005 |
+|          4.99937e-06 |    1.24047e-11 |     0.00544548 |            0.000206822 |              0.0022281 |             0.0256299 |
+|          5.12655e-06 |    1.28546e-11 |     0.00558972 |            0.000203823 |             0.00233404 |                     1 |
+|           -0.0248081 |      -0.035002 |     -0.0258047 |              0.0147141 |              -0.045391 |              -0.97437 |
+
+* Simons Observatory ⊗ Planck
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SO.likelihood")
+  params_SOxP = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SOxP.likelihood")
+  params_P    = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*_P.likelihood")
+  params_SO.shape, params_SOxP.shape, params_P.shape
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[86]:
+: ((971, 6), (971, 6), (971, 6))
+:end:
+
+#+BEGIN_SRC ipython :session pcp :results none
+  samples_SO   = MCSamples(samples=params_SO, names=labels, label="SOxSO")
+  samples_SOxP = MCSamples(samples=params_SOxP, names=labels, label="SOxP")
+  samples_P    = MCSamples(samples=params_P, names=labels, label="PxP")
+#+END_SRC
+
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  g = plots.getSubplotPlotter()
+  # g.settings.colormap = "inferno"
+  g.triangle_plot([samples_SO, samples_SOxP, samples_P], params=labels[:-1])
+  show_ref(g)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[78]:
+[[file:./obipy-resources/Bl8AS5.png]]
+:end:
+
+#+BEGIN_SRC ipython :session pcp :results none
+    results = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
+               [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
+               [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], ["tot"]]
+    table = np.stack([np.mean(params_SO, axis=0),
+                      np.mean(params_SOxP, axis=0),
+                      np.mean(params_P, axis=0),
+                      np.std(params_SO, axis=0),
+                      np.std(params_SOxP, axis=0),
+                      np.std(params_P, axis=0),
+                      np.std(params_SO-params_P, axis=0),
+                      np.std(params_SO-params_SOxP, axis=0),
+                      np.std(params_SO + params_P - 2*params_SOxP, axis=0)
+    ])
+
+    table = np.append(results, table, axis=1)
+    display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
+#+END_SRC
+
+#+BEGIN_SRC ipython :session pcp :results raw output :export none
+  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|                        | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$(SOxSO)           |            0.0104165 |    2.12888e-09 |       0.964796 |               0.022119 |               0.121061 |               1.00019 |
+| $\mu$(SOxP)            |            0.0104165 |    2.12863e-09 |       0.964918 |              0.0221197 |               0.121011 |               1.00034 |
+| $\mu$(PxP)             |            0.0104164 |    2.12876e-09 |       0.964918 |               0.022122 |               0.121043 |               1.00003 |
+| $\sigma$(SOxSO)        |          4.35923e-06 |    1.19063e-11 |     0.00529269 |            0.000197395 |             0.00208537 |             0.0319118 |
+| $\sigma$(SOxP)         |          4.70511e-06 |    1.28073e-11 |     0.00574473 |            0.000196329 |             0.00236035 |             0.0321642 |
+| $\sigma$(PxP)          |          5.16462e-06 |    1.32325e-11 |     0.00592473 |            0.000214703 |             0.00238011 |             0.0327516 |
+| $\sigma$(SOxSO - PxP)  |          2.99731e-06 |    7.16794e-12 |     0.00314853 |            0.000122405 |             0.00133315 |             0.0201569 |
+| $\sigma$(SOxSO - SOxP) |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |             0.0126795 |
+| tot                    |          3.05013e-06 |    9.43821e-12 |     0.00429037 |            0.000118191 |             0.00217506 |             0.0185606 |
+
+
+
+
+| $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+|            0.0104163 |     2.1288e-09 |       0.964831 |              0.0221165 |               0.121037 |              0.998797 |
+|            0.0104162 |    2.12874e-09 |       0.964837 |              0.0221241 |               0.121029 |               1.00012 |
+|            0.0104161 |    2.12891e-09 |       0.964766 |              0.0221283 |               0.121065 |              0.999338 |
+|          3.30158e-06 |    8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |             0.0259158 |
+|          4.13856e-06 |    1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |             0.0260542 |
+|          4.88563e-06 |    1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |             0.0249852 |
+|          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |              0.024773 |
+|          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |             0.0210134 |
+
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  np.sqrt(np.mean((params_SO-params_P)**2, axis=0))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[90]:
+#+BEGIN_EXAMPLE
+  array([3.76838567e-06, 9.58264856e-12, 4.06086871e-03, 1.72355839e-04,
+  1.81610221e-03, 2.47789402e-02])
+#+END_EXAMPLE
+:end:
+
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  np.std(params_SO-params_P, axis=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[91]:
+#+BEGIN_EXAMPLE
+  array([3.76191588e-06, 9.58206477e-12, 4.06034254e-03, 1.71957421e-04,
+  1.81588484e-03, 2.47730260e-02])
+#+END_EXAMPLE
+:end:
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  plt.semilogy()
+  x = np.arange(5)
+  plt.plot(x, np.std(params_SO-params_P, axis=0)[:-1], "o")
+  plt.plot(x, np.std(params_SO, axis=0)[:-1], "o", label="SOxSO")
+  plt.plot(x, np.std(params_SOxP, axis=0)[:-1], "o", label="SOxP")
+  plt.plot(x, np.std(params_P, axis=0)[:-1], "o", label="P")
+  plt.xticks(x, labels[:-1])
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[37]:
+: <matplotlib.legend.Legend at 0x7f78ebf4aeb8>
+[[file:./obipy-resources/YpLA07.png]]
+:end:
+
+#+BEGIN_SRC ipython :session pcp :results raw drawer
+  np.std((params_SO[:,:-1] + params_P[:,:-1] - 2*params_SOxP[:,:-1]), axis=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[79]:
+#+BEGIN_EXAMPLE
+  array([1.07947422e-11, 8.40766608e-23, 1.40824400e-05, 2.58359804e-08,
+  3.05292616e-06])
+#+END_EXAMPLE
+:end:
