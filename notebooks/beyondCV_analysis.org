@@ -1,8 +1,17 @@
-#+TITLE: Beyond Cosmic Variance
+#+TITLE: Beyond Cosmic Variance Analysis
 
-* Check minimization
+* Preamble
+#+BEGIN_SRC ipython :session bcv :results none
+  %matplotlib inline
+  import matplotlib.pyplot as plt
+  import pandas as pd
+  import numpy as np
+  plt.rcParams["text.usetex"] = True
+#+END_SRC
+
+* Check minimization algorithm
 Parse =qsub= output files
-#+BEGIN_SRC ipython :session pcp :results none
+#+BEGIN_SRC ipython :session bcv :results none
   import os, glob
 
   path =r"/home/garrido/Workdir/CMB/analysis/beyondCV/script"
@@ -47,7 +56,7 @@ Parse =qsub= output files
 #+END_SRC
 
 Convert =list= into =pandas.DataFrame=
-#+BEGIN_SRC ipython :session pcp :results drawer
+#+BEGIN_SRC ipython :session bcv :results drawer
   import numpy as np
   import pandas as pd
   df = pd.DataFrame({"duration": np.array(stop_time)-np.array(start_time),
@@ -71,12 +80,12 @@ Convert =list= into =pandas.DataFrame=
 :end:
 
 Get number of sucessful minimization
-#+BEGIN_SRC ipython :session pcp :results drawer
+#+BEGIN_SRC ipython :session bcv :results drawer
   np.sum(df.success)
 #+END_SRC
 
 Get duration statistics
-#+BEGIN_SRC ipython :session pcp :results drawer
+#+BEGIN_SRC ipython :session bcv :results drawer
   df.duration.describe()
 #+END_SRC
 
@@ -96,46 +105,9 @@ Get duration statistics
 #+END_EXAMPLE
 :end:
 
-#+BEGIN_SRC ipython :session pcp :results raw drawer
-  import numpy as np
-  import matplotlib.pyplot as plt
-
-  # Convert time series into pandas dataframe
-  import pandas as pd
-  df = np.array(stop_time) - np.array(start_time)
-#+END_SRC
-
-#+BEGIN_SRC ipython :session pcp :results raw drawer
-  # chi2_theory = np.array(chi2_theory)
-  # chi2_start = np.array(chi2_start)
-  # success = np.array(success)
-
-  # plt.figure()
-  # plt.hist(chi2_theory[success], alpha=0.5, density=True, label="succesfully")
-  # plt.hist(chi2_theory[~success], alpha=0.5, density=True, label="unsuccesfully")
-  # plt.legend()
-
-  # plt.figure()
-  # plt.hist(chi2_start[success], alpha=0.5, density=True)
-  # plt.hist(chi2_start[~success], alpha=0.5, density=True)
-
-  # print("Theory")
-  # print(" success - mean = ", np.mean(chi2_theory[success]))
-  # print(" success - std = ", np.std(chi2_theory[success]))
-  # print("!success - mean = ", np.mean(chi2_theory[~success]))
-  # print("!success - std = ", np.std(chi2_theory[~success]))
-
-  # print("Start")
-  # print(" success - mean = ", np.mean(chi2_start[success]))
-  # print(" success - std = ", np.std(chi2_start[success]))
-  # print("!success - mean = ", np.mean(chi2_start[~success]))
-  # print("!success - std = ", np.std(chi2_start[~success]))
-
-  # plt.show()
-#+END_SRC
 * Plot cosmological parameters distribution
 ** Cosmo. parameters LaTeX labels
-#+BEGIN_SRC ipython :session pcp :results none
+#+BEGIN_SRC ipython :session bcv :results none
   labels = [r"$\theta_\mathrm{MC}$",
             r"$A_\mathrm{s}$",
             r"$n_\mathrm{s}$",
@@ -145,7 +117,7 @@ Get duration statistics
 #+END_SRC
 
 ** Get cosmo. parameters from output file
-#+BEGIN_SRC ipython :session pcp :results none
+#+BEGIN_SRC ipython :session bcv :results none
   def get_params(path, pattern="*.likelihood"):
       import os, glob
       all_files = glob.glob(os.path.join(path, pattern))
@@ -164,7 +136,7 @@ Get duration statistics
 #+END_SRC
 
 ** Show input values of cosmo. parameters
-#+BEGIN_SRC ipython :session pcp :results none
+#+BEGIN_SRC ipython :session bcv :results none
   def show_ref(g):
       ref = [1.04164/100, np.exp(3.058)/1e10, 0.9649, 0.02212, 0.1210]
       for i, r in enumerate(ref):
@@ -174,22 +146,16 @@ Get duration statistics
           for ax in g.subplots[i,:i]:
               if ax: ax.axhline(r, **kwargs)
 #+END_SRC
-
-** Cosmo. parameters distribution
-#+BEGIN_SRC ipython :session pcp :results none
-  %matplotlib inline
-  import matplotlib.pyplot as plt
-  import pandas as pd
-  import numpy as np
-  plt.rcParams["text.usetex"]=True
-
+** Results from pure Planck simulation
+*** Cosmo. parameters distribution
+#+BEGIN_SRC ipython :session bcv :results none
   params = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/unbinned")
 
   from getdist import plots, MCSamples
   samples = MCSamples(samples=params, names=labels)
 #+END_SRC
 
-#+BEGIN_SRC ipython :session pcp :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results raw drawer
   g = plots.getSubplotPlotter()
   g.settings.colormap = "inferno"
   g.triangle_plot(samples, params=labels[:-1], shaded=True)
@@ -198,11 +164,11 @@ Get duration statistics
 
 #+RESULTS:
 :results:
-# Out[70]:
-[[file:./obipy-resources/ECqULn.png]]
+# Out[6]:
+[[file:./obipy-resources/udD6Jr.png]]
 :end:
 
-#+BEGIN_SRC ipython :session pcp :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results raw drawer
   g = plots.getSubplotPlotter()
   g.settings.colormap_scatter = "inferno"
   g.triangle_plot(samples, params=labels[:-1],
@@ -212,53 +178,56 @@ Get duration statistics
 
 #+RESULTS:
 :results:
-# Out[71]:
-[[file:./obipy-resources/fRDYwT.png]]
+# Out[7]:
+[[file:./obipy-resources/IIe6N6.png]]
 :end:
 
-** Table of results
-
-#+BEGIN_SRC ipython :session pcp :results value
-  np.alen(params)
+#+BEGIN_SRC ipython :session bcv :results output
+  print("Number of sucessful minimization :", np.alen(params))
 #+END_SRC
 
 #+RESULTS:
-: # Out[72]:
-: : 638
+: Number of sucessful minimization : 638
 
-#+BEGIN_SRC ipython :session pcp :results none
-min_mean = np.mean(params, axis=0)
-min_std  = np.std(params, axis=0)
-fisher = np.array([5.1265507267143515e-06, 1.2854648947626772e-11, 0.005589724100405197, 0.00020382255228959767, 0.002334040314343261, 1.])
+#+BEGIN_SRC ipython :session bcv :results none
+  min_mean = np.mean(params, axis=0)
+  min_std  = np.std(params, axis=0)
+  fisher = np.array([5.1265507267143515e-06, 1.2854648947626772e-11, 0.005589724100405197, 0.00020382255228959767, 0.002334040314343261, 1.])
+  lines = [[r"$\mu$"], [r"$\sigma$"], [r"$\sigma$ (Fisher)"], [r"$\Delta\sigma$ (min-Fisher) [%]"]]
+  table = np.stack([min_mean, min_std, fisher, 100*(min_std-fisher)/fisher])
+  table = np.append(lines, table, axis=1)
 #+END_SRC
 
-#+BEGIN_SRC ipython :session pcp :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results raw drawer
   from IPython.display import HTML, display
   import tabulate
-  table = [min_mean, min_std, fisher, (min_std-fisher)/fisher]
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[74]:
+# Out[17]:
 : <IPython.core.display.HTML object>
 :end:
 
-#+BEGIN_SRC ipython :session pcp :results raw output :export none
+#+BEGIN_SRC ipython :session bcv :results raw output :export none
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
 
 #+RESULTS:
-| $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
-|----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
-|            0.0104162 |    2.12887e-09 |       0.964695 |              0.0221223 |                0.12108 |              0.999005 |
-|          4.99937e-06 |    1.24047e-11 |     0.00544548 |            0.000206822 |              0.0022281 |             0.0256299 |
-|          5.12655e-06 |    1.28546e-11 |     0.00558972 |            0.000203823 |             0.00233404 |                     1 |
-|           -0.0248081 |      -0.035002 |     -0.0258047 |              0.0147141 |              -0.045391 |              -0.97437 |
+|                                 | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|---------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$                           |            0.0104162 |    2.12887e-09 |       0.964695 |              0.0221223 |                0.12108 |               1.53808 |
+| $\sigma$                        |          4.99937e-06 |    1.24047e-11 |     0.00544548 |            0.000206822 |              0.0022281 |               0.03946 |
+| $\sigma$ (Fisher)               |          5.12655e-06 |    1.28546e-11 |     0.00558972 |            0.000203823 |             0.00233404 |                     1 |
+| $\Delta\sigma$ (min-Fisher) [%] |             -2.48081 |        -3.5002 |       -2.58047 |                1.47141 |                -4.5391 |               -96.054 |
+
+** Results from 100 simulations
+Simulations are all the same (seed is 31415) and we estimate the intrinsic variance on
+cosmo. parameters /i.e./ the systematics from minimization.
 
 * Simons Observatory ⊗ Planck
-#+BEGIN_SRC ipython :session pcp :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results raw drawer
   params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SO.likelihood")
   params_SOxP = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SOxP.likelihood")
   params_P    = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*_P.likelihood")
@@ -271,13 +240,13 @@ fisher = np.array([5.1265507267143515e-06, 1.2854648947626772e-11, 0.00558972410
 : ((971, 6), (971, 6), (971, 6))
 :end:
 
-#+BEGIN_SRC ipython :session pcp :results none
+#+BEGIN_SRC ipython :session bcv :results none
   samples_SO   = MCSamples(samples=params_SO, names=labels, label="SOxSO")
   samples_SOxP = MCSamples(samples=params_SOxP, names=labels, label="SOxP")
   samples_P    = MCSamples(samples=params_P, names=labels, label="PxP")
 #+END_SRC
 
-#+BEGIN_SRC ipython :session pcp :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results raw drawer
   g = plots.getSubplotPlotter()
   # g.settings.colormap = "inferno"
   g.triangle_plot([samples_SO, samples_SOxP, samples_P], params=labels[:-1])
@@ -290,26 +259,25 @@ fisher = np.array([5.1265507267143515e-06, 1.2854648947626772e-11, 0.00558972410
 [[file:./obipy-resources/Bl8AS5.png]]
 :end:
 
-#+BEGIN_SRC ipython :session pcp :results none
-    results = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
-               [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
-               [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], ["tot"]]
-    table = np.stack([np.mean(params_SO, axis=0),
-                      np.mean(params_SOxP, axis=0),
-                      np.mean(params_P, axis=0),
-                      np.std(params_SO, axis=0),
-                      np.std(params_SOxP, axis=0),
-                      np.std(params_P, axis=0),
-                      np.std(params_SO-params_P, axis=0),
-                      np.std(params_SO-params_SOxP, axis=0),
-                      np.std(params_SO + params_P - 2*params_SOxP, axis=0)
-    ])
-
-    table = np.append(results, table, axis=1)
-    display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
+#+BEGIN_SRC ipython :session bcv :results none
+  lines = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
+           [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
+           [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], ["tot"]]
+  table = np.stack([np.mean(params_SO, axis=0),
+                    np.mean(params_SOxP, axis=0),
+                    np.mean(params_P, axis=0),
+                    np.std(params_SO, axis=0),
+                    np.std(params_SOxP, axis=0),
+                    np.std(params_P, axis=0),
+                    np.std(params_SO-params_P, axis=0),
+                    np.std(params_SO-params_SOxP, axis=0),
+                    np.std(params_SO + params_P - 2*params_SOxP, axis=0)
+  ])
+  table = np.append(lines, table, axis=1)
+  display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
-#+BEGIN_SRC ipython :session pcp :results raw output :export none
+#+BEGIN_SRC ipython :session bcv :results raw output :export none
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
 
@@ -340,7 +308,7 @@ fisher = np.array([5.1265507267143515e-06, 1.2854648947626772e-11, 0.00558972410
 |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |              0.024773 |
 |          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |             0.0210134 |
 
-#+BEGIN_SRC ipython :session pcp :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results raw drawer
   np.sqrt(np.mean((params_SO-params_P)**2, axis=0))
 #+END_SRC
 
@@ -353,7 +321,7 @@ fisher = np.array([5.1265507267143515e-06, 1.2854648947626772e-11, 0.00558972410
 #+END_EXAMPLE
 :end:
 
-#+BEGIN_SRC ipython :session pcp :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results raw drawer
   np.std(params_SO-params_P, axis=0)
 #+END_SRC
 
@@ -384,7 +352,7 @@ fisher = np.array([5.1265507267143515e-06, 1.2854648947626772e-11, 0.00558972410
 [[file:./obipy-resources/YpLA07.png]]
 :end:
 
-#+BEGIN_SRC ipython :session pcp :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results raw drawer
   np.std((params_SO[:,:-1] + params_P[:,:-1] - 2*params_SOxP[:,:-1]), axis=0)
 #+END_SRC
 
