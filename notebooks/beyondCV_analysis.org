@@ -7,6 +7,8 @@
   import pandas as pd
   import numpy as np
   from getdist import plots, MCSamples
+  from IPython.display import HTML, display
+  import tabulate
   plt.rcParams["text.usetex"] = True
 #+END_SRC
 
@@ -225,7 +227,7 @@ Get duration statistics
 Simulations are all the same (seed is 31415) and we estimate the intrinsic variance on
 cosmo. parameters /i.e./ the systematics from minimization.
 
-#+BEGIN_SRC ipython :session bcv :results nones
+#+BEGIN_SRC ipython :session bcv :results none
   params = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/100_sims_syst")
   samples = MCSamples(samples=params, names=labels)
 #+END_SRC
@@ -252,19 +254,15 @@ cosmo. parameters /i.e./ the systematics from minimization.
   table = np.append(lines, table, axis=1)
 #+END_SRC
 
-#+BEGIN_SRC ipython :session bcv :results raw drawer
-  from IPython.display import HTML, display
-  import tabulate
+#+BEGIN_SRC ipython :session bcv :results raw
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
 #+RESULTS:
-:results:
-# Out[17]:
+# Out[62]:
 : <IPython.core.display.HTML object>
-:end:
 
-#+BEGIN_SRC ipython :session bcv :results raw output :export none
+#+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
 
