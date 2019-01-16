@@ -326,7 +326,7 @@ cosmo. parameters /i.e./ the systematics from minimization.
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
-#+BEGIN_SRC ipython :session bcv :results raw output :export none
+#+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
 
