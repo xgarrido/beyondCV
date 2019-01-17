@@ -17,27 +17,31 @@ Parse =qsub= output files
 #+BEGIN_SRC ipython :session bcv :results none
   import os, glob
 
-  path =r"/home/garrido/Workdir/CMB/analysis/beyondCV/script"
+  path =r"/home/garrido/Workdir/CMB/analysis/beyondCV/script/ell_50_2000"
   all_files = glob.glob(os.path.join(path, "*.o*"))
 
   chi2_theory = []
-  chi2_start  = []
+  chi2_begin  = []
+  chi2_end    = []
   success     = []
   surveys     = []
   start_time  = []
   stop_time   = []
+  seeds       = []
 
   def date2time(line):
-      import pandas as pd
       time = line.split(" ", maxsplit=3)[-1]
       time = time[:-5].strip()
       return pd.to_datetime(time, format="%c")
 
   for f in all_files:
-      find_start = False
+      find_begin = False
       success += [False]
+      chi2_end += [0]
       with open(f) as stream:
           for line in stream:
+              if "DEBUG: seed" in line:
+                  seeds += [line.split("=")[1].strip()]
               if "DEBUG: survey" in line:
                   survey = line.split("=")[1].strip()
                   if survey == "SO" or survey == "P":
@@ -46,9 +50,11 @@ Parse =qsub= output files
               if "chi2(theo)/ndf" in line:
                   if survey in line:
                       chi2_theory += [float(line.split("=")[1].strip())]
-              if "chi2/ndf" in line and not find_start:
-                  chi2_start += [float(line.split("=")[1].strip())]
-                  find_start = True
+              if "chi2/ndf" in line:
+                  if not find_begin:
+                      chi2_begin += [float(line.split("=")[1].strip())]
+                      find_begin = True
+                  chi2_end[-1] = float(line.split("=")[1].strip())
               if "Finished succesfully." in line:
                   success[-1] = True
               if "Started on" in line:
@@ -60,25 +66,26 @@ Parse =qsub= output files
 
 Convert =list= into =pandas.DataFrame=
 #+BEGIN_SRC ipython :session bcv :results drawer
-  import numpy as np
-  import pandas as pd
   df = pd.DataFrame({"duration": np.array(stop_time)-np.array(start_time),
                      "chi2_theory": chi2_theory,
-                     "chi2_start": chi2_start,
-                     "success": success})
+                     "chi2_begin": chi2_begin,
+                     "chi2_end": chi2_end,
+                     "success": success,
+                     "survey": surveys}, index=np.array(seeds, dtype=np.uint))
+  df.sort_index(inplace=True)
   df.head()
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[152]:
+# Out[164]:
 #+BEGIN_EXAMPLE
-  duration  chi2_theory  chi2_start  success
-  0 00:18:22     0.977054    1.327345     True
-  1 00:31:34     0.977054    1.472700    False
-  2 00:14:12     0.977054    6.900759     True
-  3 00:18:42     0.977054    7.013102     True
-  4 00:27:40     0.977054    2.224125    False
+  duration  chi2_theory  chi2_begin  chi2_end  success survey
+  28 00:28:50     0.972313    3.095984  0.969023    False    PxP
+  28 00:16:03     1.005701    3.393066  1.004198     True  SOxSO
+  28 00:38:43     0.974076    3.282166  0.972015    False   SOxP
+  73 00:27:50     0.960580    2.186273  0.959675    False  SOxSO
+  73 00:11:16     0.969954    2.142016  0.969248     True   SOxP
 #+END_EXAMPLE
 :end:
 
@@ -87,6 +94,12 @@ Get number of sucessful minimization
   np.sum(df.success)
 #+END_SRC
 
+#+RESULTS:
+:results:
+# Out[99]:
+: 1907
+:end:
+
 Get duration statistics
 #+BEGIN_SRC ipython :session bcv :results drawer
   df.duration.describe()
@@ -94,19 +107,103 @@ Get duration statistics
 
 #+RESULTS:
 :results:
-# Out[150]:
+# Out[119]:
 #+BEGIN_EXAMPLE
-  count                        97
-  mean     0 days 00:20:10.329896
-  std      0 days 00:08:08.127261
-  min             0 days 00:05:13
-  25%             0 days 00:14:12
-  50%             0 days 00:18:22
-  75%             0 days 00:25:45
-  max             0 days 00:45:59
+  count                      3003
+  mean     0 days 00:20:38.789543
+  std      0 days 00:08:35.697947
+  min             0 days 00:03:56
+  25%             0 days 00:14:32
+  50%             0 days 00:19:39
+  75%             0 days 00:25:26
+  max             0 days 01:47:28
   Name: duration, dtype: object
 #+END_EXAMPLE
 :end:
+
+How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, PxP
+#+BEGIN_SRC ipython :session bcv :results drawer
+  dff = df.groupby(df.index).success.describe()
+  dff.head()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[167]:
+#+BEGIN_EXAMPLE
+  count unique    top freq
+  28      3      2  False    2
+  73      3      2   True    2
+  96      3      1   True    3
+  108     3      2  False    2
+  136     3      1   True    3
+#+END_EXAMPLE
+:end:
+
+#+BEGIN_SRC ipython :session bcv :results drawer
+  np.sum((dff.top == True) & (dff.freq == 3)), \
+  np.sum((dff.top == False) & (dff.freq == 3))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[172]:
+: (252, 51)
+:end:
+
+** Plot distribution of $\chi^2$ between successfull and unsuccessful minimizations
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  import seaborn as sb
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  tmpl="{}\n$\chi^2$ = {:.3f} $\pm$ {:.3f}"
+  df1 = df.chi2_theory[df.success]
+  df2 = df.chi2_theory[~df.success]
+  sb.distplot(df1, label=tmpl.format("sucessfull",np.mean(df1),np.std(df1)), color="green", axlabel=r"$\chi^2$ (theory)")
+  sb.distplot(df2, label=tmpl.format("unsuccessful",np.mean(df2), np.std(df2)), color="red", axlabel=r"$\chi^2$ (theory)")
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[156]:
+: <matplotlib.legend.Legend at 0x7f1ee085f940>
+[[file:./obipy-resources/utCTwF.png]]
+:end:
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  tmpl="{}\n$\chi^2$ = {:.3f} $\pm$ {:.3f}"
+  df1 = df.chi2_begin[df.success]
+  df2 = df.chi2_begin[~df.success]
+  sb.distplot(df1, label=tmpl.format("sucessfull",np.mean(df1),np.std(df1)), color="green", axlabel=r"$\chi^2$ (begin)")
+  sb.distplot(df2, label=tmpl.format("unsuccessful",np.mean(df2),np.std(df2)), color="red", axlabel=r"$\chi^2$ (begin)")
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[157]:
+: <matplotlib.legend.Legend at 0x7f1ee01086a0>
+[[file:./obipy-resources/05oDoy.png]]
+:end:
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  tmpl="{}\n$\chi^2$ = {:.3f} $\pm$ {:.3f}"
+  df1 = df.chi2_end[df.success]
+  df2 = df.chi2_end[~df.success]
+  sb.distplot(df1, label=tmpl.format("sucessfull",np.mean(df1),np.std(df1)), color="green", axlabel=r"$\chi^2$ (found)")
+  sb.distplot(df2, label=tmpl.format("unsuccessful",np.mean(df2),np.std(df2)), color="red", axlabel=r"$\chi^2$ (found)")
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[165]:
+: <matplotlib.legend.Legend at 0x7f1ee00a39b0>
+[[file:./obipy-resources/LMxB7d.png]]
+:end:
+
 
 * Plot cosmological parameters distribution
 ** Cosmo. parameters LaTeX labels
@@ -200,8 +297,6 @@ Get duration statistics
 #+END_SRC
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  from IPython.display import HTML, display
-  import tabulate
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
@@ -210,6 +305,8 @@ Get duration statistics
 # Out[17]:
 : <IPython.core.display.HTML object>
 :end:
+
+*** =Org= table                                                  :noexport:
 
 #+BEGIN_SRC ipython :session bcv :results raw output :export none
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
@@ -274,8 +371,81 @@ cosmo. parameters /i.e./ the systematics from minimization.
 | $\mu$    |            0.0104275 |    2.10469e-09 |       0.975453 |              0.0224105 |               0.116425 |              0.975523 |
 | $\sigma$ |          8.08209e-08 |    3.69492e-13 |    0.000129202 |            6.52134e-06 |            7.14235e-05 |           3.21921e-06 |
 
-
 * Simons Observatory ⊗ Planck
+** \ell \in [2; 3000]
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_2_3000", "*SO.likelihood")
+  params_SOxP = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_2_3000", "*SOxP.likelihood")
+  params_P    = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_2_3000", "*_P.likelihood")
+  params_SO.shape, params_SOxP.shape, params_P.shape
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[87]:
+: ((978, 6), (978, 6), (978, 6))
+:end:
+
+#+BEGIN_SRC ipython :session bcv :results none
+  samples_SO   = MCSamples(samples=params_SO, names=labels, label="SOxSO")
+  samples_SOxP = MCSamples(samples=params_SOxP, names=labels, label="SOxP")
+  samples_P    = MCSamples(samples=params_P, names=labels, label="PxP")
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results none
+  lines = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
+           [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
+           [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], [r"$\sigma$(SOxSO + PxP - 2 SOxP)"]]
+  std_SO, std_SOxP, std_P = np.std(params_SO, axis=0), np.std(params_SOxP, axis=0), np.std(params_P, axis=0)
+  std_SOmP = np.std(params_SO-params_P, axis=0)
+  std_SOmSOxP = np.std(params_SO-params_SOxP, axis=0)
+  std_SOpPm2SOxP = np.std(params_SO + params_P - 2*params_SOxP, axis=0)
+  table = np.stack([np.mean(params_SO, axis=0),
+                    np.mean(params_SOxP, axis=0),
+                    np.mean(params_P, axis=0),
+                    std_SO, std_SOxP, std_P,
+                    std_SOmP, std_SOmSOxP, std_SOpPm2SOxP
+  ])
+  table = np.append(lines, table, axis=1)
+  display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results raw output
+  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$(SOxSO)                   |            0.0104163 |     2.1288e-09 |       0.964831 |              0.0221165 |               0.121037 |               1.53776 |
+| $\mu$(SOxP)                    |            0.0104162 |    2.12874e-09 |       0.964837 |              0.0221241 |               0.121029 |               1.53979 |
+| $\mu$(PxP)                     |            0.0104161 |    2.12891e-09 |       0.964766 |              0.0221283 |               0.121065 |               1.53859 |
+| $\sigma$(SOxSO)                |          3.30158e-06 |    8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |             0.0399001 |
+| $\sigma$(SOxP)                 |          4.13856e-06 |    1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |             0.0401134 |
+| $\sigma$(PxP)                  |          4.88563e-06 |    1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |             0.0384675 |
+| $\sigma$(SOxSO - PxP)          |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |             0.0381408 |
+| $\sigma$(SOxSO - SOxP)         |          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |             0.0323524 |
+| $\sigma$(SOxSO + PxP - 2 SOxP) |          3.28542e-06 |    9.16644e-12 |     0.00375188 |            0.000160698 |             0.00174672 |             0.0537651 |
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  x = np.arange(5)
+  plt.plot(x, 100*(1-std_P/std_SO)[:-1], "o", label="P")
+  plt.plot(x, 100*(1-std_SOxP/std_SO)[:-1], "o", label="SOxP")
+  plt.plot(x, 100*(1-std_SOmP/std_SO)[:-1], "o", label="SO-P")
+  plt.plot(x, 100*(1-std_SOmSOxP/std_SO)[:-1], "o", label="SO-SOxP")
+  plt.plot(x, 100*(1-std_SOpPm2SOxP/std_SO)[:-1], "o", label="SO+P-2SOxP")
+  plt.xticks(x, labels[:-1])
+  plt.ylabel(r"$\Delta_{\mathrm{/SO}}$ [\%]")
+  plt.legend(loc="upper left", title=r"$\ell\in[2; 3000]$", bbox_to_anchor=(1,1))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[96]:
+: <matplotlib.legend.Legend at 0x7f1ed6aa0d68>
+[[file:./obipy-resources/5YM65u.png]]
+:end:
+** \ell \in [50; 2000]
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_2000", "*SO.likelihood")
   params_SOxP = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_2000", "*SOxP.likelihood")
@@ -312,15 +482,15 @@ cosmo. parameters /i.e./ the systematics from minimization.
   lines = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
            [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
            [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], [r"$\sigma$(SOxSO + PxP - 2 SOxP)"]]
+  std_SO, std_SOxP, std_P = np.std(params_SO, axis=0), np.std(params_SOxP, axis=0), np.std(params_P, axis=0)
+  std_SOmP = np.std(params_SO-params_P, axis=0)
+  std_SOmSOxP = np.std(params_SO-params_SOxP, axis=0)
+  std_SOpPm2SOxP = np.std(params_SO + params_P - 2*params_SOxP, axis=0)
   table = np.stack([np.mean(params_SO, axis=0),
                     np.mean(params_SOxP, axis=0),
                     np.mean(params_P, axis=0),
-                    np.std(params_SO, axis=0),
-                    np.std(params_SOxP, axis=0),
-                    np.std(params_P, axis=0),
-                    np.std(params_SO-params_P, axis=0),
-                    np.std(params_SO-params_SOxP, axis=0),
-                    np.std(params_SO + params_P - 2*params_SOxP, axis=0)
+                    std_SO, std_SOxP, std_P,
+                    std_SOmP, std_SOmSOxP, std_SOpPm2SOxP
   ])
   table = np.append(lines, table, axis=1)
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
@@ -343,32 +513,21 @@ cosmo. parameters /i.e./ the systematics from minimization.
 | $\sigma$(SOxSO - SOxP)        |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |             0.0126795 |
 | $\sigma$(SOxSO + PxP - 2 SOxP |          3.05013e-06 |    9.43821e-12 |     0.00429037 |            0.000118191 |             0.00217506 |             0.0185606 |
 
-#+CAPTION: Results for \ell \in [2; 3000]
-|                        | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
-|------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
-| $\mu$(SOxSO)           |            0.0104163 |     2.1288e-09 |       0.964831 |              0.0221165 |               0.121037 |              0.998797 |
-| $\mu$(SOxP)            |            0.0104162 |    2.12874e-09 |       0.964837 |              0.0221241 |               0.121029 |               1.00012 |
-| $\mu$(PxP)             |            0.0104161 |    2.12891e-09 |       0.964766 |              0.0221283 |               0.121065 |              0.999338 |
-| $\sigma$(SOxSO)        |          3.30158e-06 |    8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |             0.0259158 |
-| $\sigma$(SOxP)         |          4.13856e-06 |    1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |             0.0260542 |
-| $\sigma$(PxP)          |          4.88563e-06 |    1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |             0.0249852 |
-| $\sigma$(SOxSO - PxP)  |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |              0.024773 |
-| $\sigma$(SOxSO - SOxP) |          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |             0.0210134 |
-
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plt.semilogy()
   x = np.arange(5)
-  plt.plot(x, np.std(params_SO-params_P, axis=0)[:-1], "o")
-  plt.plot(x, np.std(params_SO, axis=0)[:-1], "o", label="SOxSO")
-  plt.plot(x, np.std(params_SOxP, axis=0)[:-1], "o", label="SOxP")
-  plt.plot(x, np.std(params_P, axis=0)[:-1], "o", label="P")
+  plt.plot(x, 100*(1-std_P/std_SO)[:-1], "o", label="P")
+  plt.plot(x, 100*(1-std_SOxP/std_SO)[:-1], "o", label="SOxP")
+  plt.plot(x, 100*(1-std_SOmP/std_SO)[:-1], "o", label="SO-P")
+  plt.plot(x, 100*(1-std_SOmSOxP/std_SO)[:-1], "o", label="SO-SOxP")
+  plt.plot(x, 100*(1-std_SOpPm2SOxP/std_SO)[:-1], "o", label="SO+P-2SOxP")
+  plt.ylabel(r"$\Delta_{\mathrm{/SO}}$ [\%]")
   plt.xticks(x, labels[:-1])
-  plt.legend()
+  plt.legend(loc="upper left", title=r"$\ell\in[50; 2000]$", bbox_to_anchor=(1,1))
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[52]:
-: <matplotlib.legend.Legend at 0x7f1ed30b4d68>
-[[file:./obipy-resources/Qdn0t9.png]]
+# Out[86]:
+: <matplotlib.legend.Legend at 0x7f1ed6e71a20>
+[[file:./obipy-resources/tmPS3t.png]]
 :end:
