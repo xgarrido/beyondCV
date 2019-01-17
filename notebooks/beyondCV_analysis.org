@@ -124,30 +124,13 @@ Get duration statistics
 How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, PxP
 #+BEGIN_SRC ipython :session bcv :results drawer
   dff = df.groupby(df.index).success.describe()
-  dff.head()
-#+END_SRC
-
-#+RESULTS:
-:results:
-# Out[167]:
-#+BEGIN_EXAMPLE
-  count unique    top freq
-  28      3      2  False    2
-  73      3      2   True    2
-  96      3      1   True    3
-  108     3      2  False    2
-  136     3      1   True    3
-#+END_EXAMPLE
-:end:
-
-#+BEGIN_SRC ipython :session bcv :results drawer
   np.sum((dff.top == True) & (dff.freq == 3)), \
   np.sum((dff.top == False) & (dff.freq == 3))
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[172]:
+# Out[174]:
 : (252, 51)
 :end:
 
@@ -382,7 +365,7 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+RESULTS:
 :results:
-# Out[87]:
+# Out[175]:
 : ((978, 6), (978, 6), (978, 6))
 :end:
 
@@ -455,7 +438,7 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+RESULTS:
 :results:
-# Out[47]:
+# Out[176]:
 : ((971, 6), (971, 6), (971, 6))
 :end:
 
@@ -467,15 +450,14 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   g = plots.getSubplotPlotter()
-  # g.settings.colormap = "inferno"
   g.triangle_plot([samples_SO, samples_SOxP, samples_P], params=labels[:-1])
   show_ref(g)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[49]:
-[[file:./obipy-resources/AkEgmH.png]]
+# Out[178]:
+[[file:./obipy-resources/j0LRmj.png]]
 :end:
 
 #+BEGIN_SRC ipython :session bcv :results none
