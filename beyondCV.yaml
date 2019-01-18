@@ -31,7 +31,6 @@ experiment:
 
   freq_all_SO: [27, 39, 93, 145, 225, 280] # GHz
   freq_SO: [93, 145, 225] # GHz
-  use_external_file_SO: True
 
 # Cobaya setup
 cobaya:

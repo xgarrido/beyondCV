@@ -1,9 +1,8 @@
 import numpy as np
-from beyondCV import V3calc as V3
 
 def get_noise(p, exp):
     l = np.arange(p['lmin'], p['lmax'])
-    if p.get("use_external_file_%s"%exp) is None:
+    if exp == "Planck":
         sigma = np.array(p['noise_%s'%exp])
         beam_FWHM = np.array(p['beam_%s'%exp])
         freq = np.array(p['freq_%s'%exp])
@@ -19,7 +18,7 @@ def get_noise(p, exp):
             count += 1
         DNl_array['all'] = 1/DNl_all
     else:
-        print('use external file')
+        from beyondCV import V3calc as V3
         freq_all=np.array(p['freq_all_%s'%exp])
         ell,N_ell_T_LA,N_ell_P_LA,Map_white_noise_levels=V3.so_V3_LA_noise(2,p['fsky'],p['lmin'],p['lmax'],delta_ell=1,beam_corrected=True)
         freq=np.array(p['freq_%s'%exp])
