@@ -4,12 +4,12 @@
 #+BEGIN_SRC ipython :session bcv :results none
   %matplotlib inline
   import matplotlib.pyplot as plt
+  plt.rcParams["text.usetex"] = True
   import pandas as pd
   import numpy as np
   from getdist import plots, MCSamples
   from IPython.display import HTML, display
   import tabulate
-  plt.rcParams["text.usetex"] = True
 #+END_SRC
 
 * Check minimization algorithm
@@ -17,7 +17,7 @@ Parse =qsub= output files
 #+BEGIN_SRC ipython :session bcv :results none
   import os, glob
 
-  path =r"/home/garrido/Workdir/CMB/analysis/beyondCV/script/ell_50_2000"
+  path =r"/home/garrido/Workdir/CMB/analysis/beyondCV/script/"
   all_files = glob.glob(os.path.join(path, "*.o*"))
 
   chi2_theory = []
@@ -71,21 +71,43 @@ Convert =list= into =pandas.DataFrame=
                      "chi2_begin": chi2_begin,
                      "chi2_end": chi2_end,
                      "success": success,
-                     "survey": surveys}, index=np.array(seeds, dtype=np.uint))
+                     "survey": surveys},
+                    index=np.array(seeds, dtype=np.uint))
   df.sort_index(inplace=True)
   df.head()
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[164]:
+# Out[190]:
 #+BEGIN_EXAMPLE
   duration  chi2_theory  chi2_begin  chi2_end  success survey
-  28 00:28:50     0.972313    3.095984  0.969023    False    PxP
-  28 00:16:03     1.005701    3.393066  1.004198     True  SOxSO
-  28 00:38:43     0.974076    3.282166  0.972015    False   SOxP
-  73 00:27:50     0.960580    2.186273  0.959675    False  SOxSO
-  73 00:11:16     0.969954    2.142016  0.969248     True   SOxP
+  0 00:35:53     0.960852    1.775541  0.956156    False   SOxP
+  0 00:33:56     0.961740    1.783959  0.957032     True  SOxSO
+  0 00:49:48     0.957421    1.727541  0.952406    False    PxP
+  1 01:06:20     0.994213    1.736074  0.987232    False  SOxSO
+  1 00:44:47     0.985661    1.708013  0.978956    False   SOxP
+#+END_EXAMPLE
+:end:
+
+Get duration statistics
+#+BEGIN_SRC ipython :session bcv :results drawer
+  df.duration.describe()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[191]:
+#+BEGIN_EXAMPLE
+  count                      3001
+  mean     0 days 00:33:47.026324
+  std      0 days 00:13:20.746408
+  min             0 days 00:06:14
+  25%             0 days 00:23:42
+  50%             0 days 00:32:31
+  75%             0 days 00:41:59
+  max             0 days 02:42:29
+  Name: duration, dtype: object
 #+END_EXAMPLE
 :end:
 
@@ -96,29 +118,8 @@ Get number of sucessful minimization
 
 #+RESULTS:
 :results:
-# Out[99]:
-: 1907
-:end:
-
-Get duration statistics
-#+BEGIN_SRC ipython :session bcv :results drawer
-  df.duration.describe()
-#+END_SRC
-
-#+RESULTS:
-:results:
-# Out[119]:
-#+BEGIN_EXAMPLE
-  count                      3003
-  mean     0 days 00:20:38.789543
-  std      0 days 00:08:35.697947
-  min             0 days 00:03:56
-  25%             0 days 00:14:32
-  50%             0 days 00:19:39
-  75%             0 days 00:25:26
-  max             0 days 01:47:28
-  Name: duration, dtype: object
-#+END_EXAMPLE
+# Out[192]:
+: 2009
 :end:
 
 How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, PxP
@@ -135,7 +136,7 @@ How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, 
 :end:
 
 ** Plot distribution of $\chi^2$ between successfull and unsuccessful minimizations
-#+BEGIN_SRC ipython :session bcv :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results none
   import seaborn as sb
 #+END_SRC
 
@@ -150,9 +151,9 @@ How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, 
 
 #+RESULTS:
 :results:
-# Out[156]:
-: <matplotlib.legend.Legend at 0x7f1ee085f940>
-[[file:./obipy-resources/utCTwF.png]]
+# Out[195]:
+: <matplotlib.legend.Legend at 0x7f1edac23c18>
+[[file:./obipy-resources/Xw58n6.png]]
 :end:
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
@@ -166,9 +167,9 @@ How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, 
 
 #+RESULTS:
 :results:
-# Out[157]:
-: <matplotlib.legend.Legend at 0x7f1ee01086a0>
-[[file:./obipy-resources/05oDoy.png]]
+# Out[196]:
+: <matplotlib.legend.Legend at 0x7f1edad5cc18>
+[[file:./obipy-resources/LoePO5.png]]
 :end:
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
@@ -182,11 +183,10 @@ How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, 
 
 #+RESULTS:
 :results:
-# Out[165]:
-: <matplotlib.legend.Legend at 0x7f1ee00a39b0>
-[[file:./obipy-resources/LMxB7d.png]]
+# Out[197]:
+: <matplotlib.legend.Legend at 0x7f1edaaa83c8>
+[[file:./obipy-resources/sbbPH3.png]]
 :end:
-
 
 * Plot cosmological parameters distribution
 ** Cosmo. parameters LaTeX labels
@@ -438,7 +438,7 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+RESULTS:
 :results:
-# Out[176]:
+# Out[210]:
 : ((971, 6), (971, 6), (971, 6))
 :end:
 
@@ -509,7 +509,92 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+RESULTS:
 :results:
-# Out[86]:
-: <matplotlib.legend.Legend at 0x7f1ed6e71a20>
-[[file:./obipy-resources/tmPS3t.png]]
+# Out[212]:
+: <matplotlib.legend.Legend at 0x7f1eda594ac8>
+[[file:./obipy-resources/bvGysh.png]]
+:end:
+** \ell \in [50; 1500]
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SO.likelihood")
+  params_SOxP = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SOxP.likelihood")
+  params_P    = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*_P.likelihood")
+  params_SO.shape, params_SOxP.shape, params_P.shape
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[214]:
+: ((999, 6), (999, 6), (999, 6))
+:end:
+
+#+BEGIN_SRC ipython :session bcv :results none
+  samples_SO   = MCSamples(samples=params_SO, names=labels, label="SOxSO")
+  samples_SOxP = MCSamples(samples=params_SOxP, names=labels, label="SOxP")
+  samples_P    = MCSamples(samples=params_P, names=labels, label="PxP")
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  g = plots.getSubplotPlotter()
+  g.triangle_plot([samples_SO, samples_SOxP, samples_P], params=labels[:-1])
+  show_ref(g)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[206]:
+[[file:./obipy-resources/O4TXAu.png]]
+:end:
+
+#+BEGIN_SRC ipython :session bcv :results none
+  lines = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
+           [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
+           [r"$\sigma$(SOxSO - PxP)"], [r"$\sigma$(SOxSO - SOxP)"], [r"$\sigma$(SOxSO + PxP - 2 SOxP)"]]
+  std_SO, std_SOxP, std_P = np.std(params_SO, axis=0), np.std(params_SOxP, axis=0), np.std(params_P, axis=0)
+  std_SOmP = np.std(params_SO-params_P, axis=0)
+  std_SOmSOxP = np.std(params_SO-params_SOxP, axis=0)
+  std_SOpPm2SOxP = np.std(params_SO + params_P - 2*params_SOxP, axis=0)
+  table = np.stack([np.mean(params_SO, axis=0),
+                    np.mean(params_SOxP, axis=0),
+                    np.mean(params_P, axis=0),
+                    std_SO, std_SOxP, std_P,
+                    std_SOmP, std_SOmSOxP, std_SOpPm2SOxP
+  ])
+  table = np.append(lines, table, axis=1)
+  display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results raw output
+  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$(SOxSO)                   |            0.0104164 |    2.12863e-09 |       0.965051 |              0.0221351 |               0.120983 |              0.742085 |
+| $\mu$(SOxP)                    |            0.0104164 |    2.12875e-09 |        0.96499 |              0.0221342 |               0.121003 |              0.742216 |
+| $\mu$(PxP)                     |            0.0104164 |    2.12881e-09 |       0.964953 |              0.0221335 |               0.121012 |              0.742351 |
+| $\sigma$(SOxSO)                |           6.3324e-06 |    1.53135e-11 |     0.00712775 |            0.000258049 |             0.00282965 |             0.0280147 |
+| $\sigma$(SOxP)                 |          6.34447e-06 |    1.52396e-11 |     0.00707853 |            0.000258622 |             0.00282214 |             0.0280142 |
+| $\sigma$(PxP)                  |           6.5121e-06 |     1.5435e-11 |     0.00720973 |            0.000265144 |             0.00285634 |             0.0279847 |
+| $\sigma$(SOxSO - PxP)          |           1.8413e-06 |    4.23132e-12 |      0.0021341 |            7.39349e-05 |            0.000775937 |            0.00875221 |
+| $\sigma$(SOxSO - SOxP)         |          9.88702e-07 |    2.64955e-12 |     0.00126386 |            4.27381e-05 |            0.000495158 |            0.00443434 |
+| $\sigma$(SOxSO + PxP - 2 SOxP) |          8.43566e-07 |     3.2112e-12 |     0.00141612 |            4.80235e-05 |            0.000617392 |            0.00245867 |
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  x = np.arange(5)
+  plt.plot(x, 100*(1-std_P/std_SO)[:-1], "o", label="P")
+  plt.plot(x, 100*(1-std_SOxP/std_SO)[:-1], "o", label="SOxP")
+  plt.plot(x, 100*(1-std_SOmP/std_SO)[:-1], "o", label="SO-P")
+  plt.plot(x, 100*(1-std_SOmSOxP/std_SO)[:-1], "o", label="SO-SOxP")
+  plt.plot(x, 100*(1-std_SOpPm2SOxP/std_SO)[:-1], "o", label="SO+P-2SOxP")
+  plt.ylabel(r"$\Delta_{\mathrm{/SO}}$ [\%]")
+  plt.xticks(x, labels[:-1])
+  plt.legend(loc="upper left", title=r"$\ell\in[50; 1500]$", bbox_to_anchor=(1,1))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[217]:
+: <matplotlib.legend.Legend at 0x7f1eda8e5f98>
+[[file:./obipy-resources/ODfucl.png]]
 :end:
