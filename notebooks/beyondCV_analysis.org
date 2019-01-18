@@ -393,23 +393,6 @@ cosmo. parameters /i.e./ the systematics from minimization.
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
-#+BEGIN_SRC ipython :session bcv :results raw output
-  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
-#+END_SRC
-
-#+RESULTS:
-|                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
-|--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
-| $\mu$(SOxSO)                   |            0.0104163 |     2.1288e-09 |       0.964831 |              0.0221165 |               0.121037 |               1.53776 |
-| $\mu$(SOxP)                    |            0.0104162 |    2.12874e-09 |       0.964837 |              0.0221241 |               0.121029 |               1.53979 |
-| $\mu$(PxP)                     |            0.0104161 |    2.12891e-09 |       0.964766 |              0.0221283 |               0.121065 |               1.53859 |
-| $\sigma$(SOxSO)                |          3.30158e-06 |    8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |             0.0399001 |
-| $\sigma$(SOxP)                 |          4.13856e-06 |    1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |             0.0401134 |
-| $\sigma$(PxP)                  |          4.88563e-06 |    1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |             0.0384675 |
-| $\sigma$(SOxSO - PxP)          |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |             0.0381408 |
-| $\sigma$(SOxSO - SOxP)         |          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |             0.0323524 |
-| $\sigma$(SOxSO + PxP - 2 SOxP) |          3.28542e-06 |    9.16644e-12 |     0.00375188 |            0.000160698 |             0.00174672 |             0.0537651 |
-
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   x = np.arange(5)
   plt.plot(x, 100*(1-std_P/std_SO)[:-1], "o", label="P")
@@ -428,6 +411,25 @@ cosmo. parameters /i.e./ the systematics from minimization.
 : <matplotlib.legend.Legend at 0x7f1ed6aa0d68>
 [[file:./obipy-resources/5YM65u.png]]
 :end:
+
+*** Org table                                                    :noexport:
+#+BEGIN_SRC ipython :session bcv :results raw output
+  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$(SOxSO)                   |            0.0104163 |     2.1288e-09 |       0.964831 |              0.0221165 |               0.121037 |               1.53776 |
+| $\mu$(SOxP)                    |            0.0104162 |    2.12874e-09 |       0.964837 |              0.0221241 |               0.121029 |               1.53979 |
+| $\mu$(PxP)                     |            0.0104161 |    2.12891e-09 |       0.964766 |              0.0221283 |               0.121065 |               1.53859 |
+| $\sigma$(SOxSO)                |          3.30158e-06 |    8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |             0.0399001 |
+| $\sigma$(SOxP)                 |          4.13856e-06 |    1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |             0.0401134 |
+| $\sigma$(PxP)                  |          4.88563e-06 |    1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |             0.0384675 |
+| $\sigma$(SOxSO - PxP)          |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |             0.0381408 |
+| $\sigma$(SOxSO - SOxP)         |          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |             0.0323524 |
+| $\sigma$(SOxSO + PxP - 2 SOxP) |          3.28542e-06 |    9.16644e-12 |     0.00375188 |            0.000160698 |             0.00174672 |             0.0537651 |
+
 ** \ell \in [50; 2000]
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_2000", "*SO.likelihood")
@@ -478,23 +480,6 @@ cosmo. parameters /i.e./ the systematics from minimization.
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
-#+BEGIN_SRC ipython :session bcv :results raw output
-  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
-#+END_SRC
-
-#+RESULTS:
-|                               | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
-|-------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
-| $\mu$(SOxSO)                  |            0.0104165 |    2.12888e-09 |       0.964796 |               0.022119 |               0.121061 |               1.00019 |
-| $\mu$(SOxP)                   |            0.0104165 |    2.12863e-09 |       0.964918 |              0.0221197 |               0.121011 |               1.00034 |
-| $\mu$(PxP)                    |            0.0104164 |    2.12876e-09 |       0.964918 |               0.022122 |               0.121043 |               1.00003 |
-| $\sigma$(SOxSO)               |          4.35923e-06 |    1.19063e-11 |     0.00529269 |            0.000197395 |             0.00208537 |             0.0319118 |
-| $\sigma$(SOxP)                |          4.70511e-06 |    1.28073e-11 |     0.00574473 |            0.000196329 |             0.00236035 |             0.0321642 |
-| $\sigma$(PxP)                 |          5.16462e-06 |    1.32325e-11 |     0.00592473 |            0.000214703 |             0.00238011 |             0.0327516 |
-| $\sigma$(SOxSO - PxP)         |          2.99731e-06 |    7.16794e-12 |     0.00314853 |            0.000122405 |             0.00133315 |             0.0201569 |
-| $\sigma$(SOxSO - SOxP)        |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |             0.0126795 |
-| $\sigma$(SOxSO + PxP - 2 SOxP |          3.05013e-06 |    9.43821e-12 |     0.00429037 |            0.000118191 |             0.00217506 |             0.0185606 |
-
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   x = np.arange(5)
   plt.plot(x, 100*(1-std_P/std_SO)[:-1], "o", label="P")
@@ -513,11 +498,31 @@ cosmo. parameters /i.e./ the systematics from minimization.
 : <matplotlib.legend.Legend at 0x7f1eda594ac8>
 [[file:./obipy-resources/bvGysh.png]]
 :end:
+
+*** Org table                                                    :noexport:
+#+BEGIN_SRC ipython :session bcv :results raw output
+  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|                               | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|-------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$(SOxSO)                  |            0.0104165 |    2.12888e-09 |       0.964796 |               0.022119 |               0.121061 |               1.00019 |
+| $\mu$(SOxP)                   |            0.0104165 |    2.12863e-09 |       0.964918 |              0.0221197 |               0.121011 |               1.00034 |
+| $\mu$(PxP)                    |            0.0104164 |    2.12876e-09 |       0.964918 |               0.022122 |               0.121043 |               1.00003 |
+| $\sigma$(SOxSO)               |          4.35923e-06 |    1.19063e-11 |     0.00529269 |            0.000197395 |             0.00208537 |             0.0319118 |
+| $\sigma$(SOxP)                |          4.70511e-06 |    1.28073e-11 |     0.00574473 |            0.000196329 |             0.00236035 |             0.0321642 |
+| $\sigma$(PxP)                 |          5.16462e-06 |    1.32325e-11 |     0.00592473 |            0.000214703 |             0.00238011 |             0.0327516 |
+| $\sigma$(SOxSO - PxP)         |          2.99731e-06 |    7.16794e-12 |     0.00314853 |            0.000122405 |             0.00133315 |             0.0201569 |
+| $\sigma$(SOxSO - SOxP)        |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |             0.0126795 |
+| $\sigma$(SOxSO + PxP - 2 SOxP |          3.05013e-06 |    9.43821e-12 |     0.00429037 |            0.000118191 |             0.00217506 |             0.0185606 |
+
+
 ** \ell \in [50; 1500]
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SO.likelihood")
-  params_SOxP = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*SOxP.likelihood")
-  params_P    = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output", "*_P.likelihood")
+  params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_1500", "*SO.likelihood")
+  params_SOxP = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_1500", "*SOxP.likelihood")
+  params_P    = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_1500", "*_P.likelihood")
   params_SO.shape, params_SOxP.shape, params_P.shape
 #+END_SRC
 
@@ -563,23 +568,6 @@ cosmo. parameters /i.e./ the systematics from minimization.
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
-#+BEGIN_SRC ipython :session bcv :results raw output
-  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
-#+END_SRC
-
-#+RESULTS:
-|                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
-|--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
-| $\mu$(SOxSO)                   |            0.0104164 |    2.12863e-09 |       0.965051 |              0.0221351 |               0.120983 |              0.742085 |
-| $\mu$(SOxP)                    |            0.0104164 |    2.12875e-09 |        0.96499 |              0.0221342 |               0.121003 |              0.742216 |
-| $\mu$(PxP)                     |            0.0104164 |    2.12881e-09 |       0.964953 |              0.0221335 |               0.121012 |              0.742351 |
-| $\sigma$(SOxSO)                |           6.3324e-06 |    1.53135e-11 |     0.00712775 |            0.000258049 |             0.00282965 |             0.0280147 |
-| $\sigma$(SOxP)                 |          6.34447e-06 |    1.52396e-11 |     0.00707853 |            0.000258622 |             0.00282214 |             0.0280142 |
-| $\sigma$(PxP)                  |           6.5121e-06 |     1.5435e-11 |     0.00720973 |            0.000265144 |             0.00285634 |             0.0279847 |
-| $\sigma$(SOxSO - PxP)          |           1.8413e-06 |    4.23132e-12 |      0.0021341 |            7.39349e-05 |            0.000775937 |            0.00875221 |
-| $\sigma$(SOxSO - SOxP)         |          9.88702e-07 |    2.64955e-12 |     0.00126386 |            4.27381e-05 |            0.000495158 |            0.00443434 |
-| $\sigma$(SOxSO + PxP - 2 SOxP) |          8.43566e-07 |     3.2112e-12 |     0.00141612 |            4.80235e-05 |            0.000617392 |            0.00245867 |
-
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   x = np.arange(5)
   plt.plot(x, 100*(1-std_P/std_SO)[:-1], "o", label="P")
@@ -598,3 +586,21 @@ cosmo. parameters /i.e./ the systematics from minimization.
 : <matplotlib.legend.Legend at 0x7f1eda8e5f98>
 [[file:./obipy-resources/ODfucl.png]]
 :end:
+
+*** Org table                                                    :noexport:
+#+BEGIN_SRC ipython :session bcv :results raw output
+  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$(SOxSO)                   |            0.0104164 |    2.12863e-09 |       0.965051 |              0.0221351 |               0.120983 |              0.742085 |
+| $\mu$(SOxP)                    |            0.0104164 |    2.12875e-09 |        0.96499 |              0.0221342 |               0.121003 |              0.742216 |
+| $\mu$(PxP)                     |            0.0104164 |    2.12881e-09 |       0.964953 |              0.0221335 |               0.121012 |              0.742351 |
+| $\sigma$(SOxSO)                |           6.3324e-06 |    1.53135e-11 |     0.00712775 |            0.000258049 |             0.00282965 |             0.0280147 |
+| $\sigma$(SOxP)                 |          6.34447e-06 |    1.52396e-11 |     0.00707853 |            0.000258622 |             0.00282214 |             0.0280142 |
+| $\sigma$(PxP)                  |           6.5121e-06 |     1.5435e-11 |     0.00720973 |            0.000265144 |             0.00285634 |             0.0279847 |
+| $\sigma$(SOxSO - PxP)          |           1.8413e-06 |    4.23132e-12 |      0.0021341 |            7.39349e-05 |            0.000775937 |            0.00875221 |
+| $\sigma$(SOxSO - SOxP)         |          9.88702e-07 |    2.64955e-12 |     0.00126386 |            4.27381e-05 |            0.000495158 |            0.00443434 |
+| $\sigma$(SOxSO + PxP - 2 SOxP) |          8.43566e-07 |     3.2112e-12 |     0.00141612 |            4.80235e-05 |            0.000617392 |            0.00245867 |
