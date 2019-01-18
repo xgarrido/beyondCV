@@ -70,7 +70,7 @@ def simulation_full(setup):
     freq_Planck = list(freq_Planck)
     freq_Planck.append("all")
 
-    freq_SO, DNl_array_SO = utils.get_noise(experiment,"SO")
+    freq_SO, DNl_array_SO = utils.get_noise(experiment, "SO")
     freq_SO = list(freq_SO)
     freq_SO.append("all")
 
