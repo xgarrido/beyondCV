@@ -169,7 +169,7 @@ def minimization(setup, Dl, cov):
     info["likelihood"] = {"chi2": chi2}
 
     from cobaya.run import run
-    updated_info, products = run(info)
+    return run(info)
 
 # Main function:
 def main():
@@ -214,7 +214,13 @@ def main():
     if args.seed_minimization:
         print("WARNING: Seed for minimization set to {} value".format(args.seed_minimization))
         np.random.seed(int(args.seed_minimization))
-    minimization(setup, Dl, cov)
+    updated_info, results = minimization(setup, Dl, cov)
+
+    # Store MINUIT results (remove the 'minuit' object that can't be serialized)
+    del results["OptimizeResult"]["minuit"]
+    import pickle
+    pkl_file = setup.get("cobaya").get("output") + "_results.pkl"
+    pickle.dump(results, open(pkl_file, "wb"))
 
 # script:
 if __name__ == "__main__":
