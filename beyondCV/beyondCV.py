@@ -219,8 +219,9 @@ def main():
     # Store MINUIT results (remove the 'minuit' object that can't be serialized)
     del results["OptimizeResult"]["minuit"]
     import pickle
-    pkl_file = setup.get("cobaya").get("output") + "_results.pkl"
-    pickle.dump(results, open(pkl_file, "wb"))
+    output_dir = setup.get("cobaya").get("output")
+    if output_dir:
+        pickle.dump(results, open(output_dir + "_results.pkl", "wb"))
 
 # script:
 if __name__ == "__main__":
