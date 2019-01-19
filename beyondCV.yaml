@@ -50,10 +50,13 @@ cobaya:
       prior:
         min: 0.0103
         max: 0.0105
-    As:
+    logA:
       prior:
-        min: 2.0e-9
-        max: 2.2e-9
+        min: 3.0
+        max: 3.1
+      drop: True
+    As:
+      value: "lambda logA: 1e-10*np.exp(logA)"
     ns:
       prior:
         min: 0.9
