@@ -216,12 +216,20 @@ def main():
         np.random.seed(int(args.seed_minimization))
     updated_info, results = minimization(setup, Dl, cov)
 
-    # Store MINUIT results (remove the 'minuit' object that can't be serialized)
+    # Store configuration and MINUIT results
+    # Remove function pointer and cobaya results (issue with thread)
+    del setup["cobaya"]["likelihood"]
     del results["OptimizeResult"]["minuit"]
-    import pickle
+    del results["maximum"]
     output_dir = setup.get("cobaya").get("output")
     if output_dir:
-        pickle.dump(results, open(output_dir + "_results.pkl", "wb"))
+        import pickle
+        if args.seed_simulation:
+            setup["seed_simulation"] =  args.seed_simulation
+        if args.seed_minimization:
+            setup["seed_minimization"] =  args.seed_minimization
+        setup["survey"] = args.survey
+        pickle.dump({"setup": setup, "results": results}, open(output_dir + "_results.pkl", "wb"))
 
 # script:
 if __name__ == "__main__":
