@@ -158,16 +158,11 @@ cosmo. parameters /i.e./ the systematics from minimization.
   table = np.append(lines, table, axis=1)
 #+END_SRC
 
-#+BEGIN_SRC ipython :session bcv :results raw drawer
+#+BEGIN_SRC ipython :session bcv :results none
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
-#+RESULTS:
-:results:
-# Out[63]:
-: <IPython.core.display.HTML object>
-:end:
-
+*** Org table                                                    :noexport:
 #+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
@@ -189,7 +184,7 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+RESULTS:
 :results:
-# Out[175]:
+# Out[218]:
 : ((978, 6), (978, 6), (978, 6))
 :end:
 
@@ -217,23 +212,28 @@ cosmo. parameters /i.e./ the systematics from minimization.
   display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
 #+END_SRC
 
+Set PxP deviation as standard for further comparison
+#+BEGIN_SRC ipython :session bcv :results none
+  ref_std = std_P
+#+END_SRC
+
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   x = np.arange(5)
-  plt.plot(x, 100*(1-std_P/std_SO)[:-1], "o", label="P")
-  plt.plot(x, 100*(1-std_SOxP/std_SO)[:-1], "o", label="SOxP")
-  plt.plot(x, 100*(1-std_SOmP/std_SO)[:-1], "o", label="SO-P")
-  plt.plot(x, 100*(1-std_SOmSOxP/std_SO)[:-1], "o", label="SO-SOxP")
-  plt.plot(x, 100*(1-std_SOpPm2SOxP/std_SO)[:-1], "o", label="SO+P-2SOxP")
+  plt.plot(x, (ref_std/std_SO-1)[:-1], "o", label="SO")
+  plt.plot(x, (ref_std/std_SOxP-1)[:-1], "o", label="SOxP")
+  plt.plot(x, (ref_std/std_SOmP-1)[:-1], "o", label="SO-P")
+  plt.plot(x, (ref_std/std_SOmSOxP-1)[:-1], "o", label="SO-SOxP")
+  plt.plot(x, (ref_std/std_SOpPm2SOxP-1)[:-1], "o", label="SO+P-2SOxP")
   plt.xticks(x, labels[:-1])
-  plt.ylabel(r"$\Delta_{\mathrm{/SO}}$ [\%]")
+  plt.ylabel(r"$\Delta_\sigma$ (Planck)")
   plt.legend(loc="upper left", title=r"$\ell\in[2; 3000]$", bbox_to_anchor=(1,1))
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[96]:
-: <matplotlib.legend.Legend at 0x7f1ed6aa0d68>
-[[file:./obipy-resources/5YM65u.png]]
+# Out[230]:
+: <matplotlib.legend.Legend at 0x7f1eda160ba8>
+[[file:./obipy-resources/wTgkfy.png]]
 :end:
 
 *** Org table                                                    :noexport:
@@ -264,7 +264,7 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+RESULTS:
 :results:
-# Out[210]:
+# Out[232]:
 : ((971, 6), (971, 6), (971, 6))
 :end:
 
@@ -306,21 +306,21 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   x = np.arange(5)
-  plt.plot(x, 100*(1-std_P/std_SO)[:-1], "o", label="P")
-  plt.plot(x, 100*(1-std_SOxP/std_SO)[:-1], "o", label="SOxP")
-  plt.plot(x, 100*(1-std_SOmP/std_SO)[:-1], "o", label="SO-P")
-  plt.plot(x, 100*(1-std_SOmSOxP/std_SO)[:-1], "o", label="SO-SOxP")
-  plt.plot(x, 100*(1-std_SOpPm2SOxP/std_SO)[:-1], "o", label="SO+P-2SOxP")
-  plt.ylabel(r"$\Delta_{\mathrm{/SO}}$ [\%]")
+  plt.plot(x, (ref_std/std_SO-1)[:-1], "o", label="SO")
+  plt.plot(x, (ref_std/std_SOxP-1)[:-1], "o", label="SOxP")
+  plt.plot(x, (ref_std/std_SOmP-1)[:-1], "o", label="SO-P")
+  plt.plot(x, (ref_std/std_SOmSOxP-1)[:-1], "o", label="SO-SOxP")
+  plt.plot(x, (ref_std/std_SOpPm2SOxP-1)[:-1], "o", label="SO+P-2SOxP")
   plt.xticks(x, labels[:-1])
+  plt.ylabel(r"$\Delta_\sigma$ (Planck)")
   plt.legend(loc="upper left", title=r"$\ell\in[50; 2000]$", bbox_to_anchor=(1,1))
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[212]:
-: <matplotlib.legend.Legend at 0x7f1eda594ac8>
-[[file:./obipy-resources/bvGysh.png]]
+# Out[234]:
+: <matplotlib.legend.Legend at 0x7f1eda6bdcf8>
+[[file:./obipy-resources/ESNtlB.png]]
 :end:
 
 *** Org table                                                    :noexport:
@@ -341,7 +341,6 @@ cosmo. parameters /i.e./ the systematics from minimization.
 | $\sigma$(SOxSO - SOxP)        |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |             0.0126795 |
 | $\sigma$(SOxSO + PxP - 2 SOxP |          3.05013e-06 |    9.43821e-12 |     0.00429037 |            0.000118191 |             0.00217506 |             0.0185606 |
 
-
 ** \ell \in [50; 1500]
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   params_SO   = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_50_1500", "*SO.likelihood")
@@ -352,8 +351,8 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+RESULTS:
 :results:
-# Out[214]:
-: ((999, 6), (999, 6), (999, 6))
+# Out[237]:
+: ((1001, 6), (1001, 6), (1001, 6))
 :end:
 
 #+BEGIN_SRC ipython :session bcv :results none
@@ -394,21 +393,21 @@ cosmo. parameters /i.e./ the systematics from minimization.
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   x = np.arange(5)
-  plt.plot(x, 100*(1-std_P/std_SO)[:-1], "o", label="P")
-  plt.plot(x, 100*(1-std_SOxP/std_SO)[:-1], "o", label="SOxP")
-  plt.plot(x, 100*(1-std_SOmP/std_SO)[:-1], "o", label="SO-P")
-  plt.plot(x, 100*(1-std_SOmSOxP/std_SO)[:-1], "o", label="SO-SOxP")
-  plt.plot(x, 100*(1-std_SOpPm2SOxP/std_SO)[:-1], "o", label="SO+P-2SOxP")
-  plt.ylabel(r"$\Delta_{\mathrm{/SO}}$ [\%]")
+  plt.plot(x, (ref_std/std_SO-1)[:-1], "o", label="SO")
+  plt.plot(x, (ref_std/std_SOxP-1)[:-1], "o", label="SOxP")
+  plt.plot(x, (ref_std/std_SOmP-1)[:-1], "o", label="SO-P")
+  plt.plot(x, (ref_std/std_SOmSOxP-1)[:-1], "o", label="SO-SOxP")
+  plt.plot(x, (ref_std/std_SOpPm2SOxP-1)[:-1], "o", label="SO+P-2SOxP")
   plt.xticks(x, labels[:-1])
+  plt.ylabel(r"$\Delta_\sigma$ (Planck)")
   plt.legend(loc="upper left", title=r"$\ell\in[50; 1500]$", bbox_to_anchor=(1,1))
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[217]:
-: <matplotlib.legend.Legend at 0x7f1eda8e5f98>
-[[file:./obipy-resources/ODfucl.png]]
+# Out[239]:
+: <matplotlib.legend.Legend at 0x7f1eda228b00>
+[[file:./obipy-resources/RyOF5b.png]]
 :end:
 
 *** Org table                                                    :noexport:
