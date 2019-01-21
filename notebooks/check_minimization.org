@@ -7,9 +7,68 @@
   plt.rcParams["text.usetex"] = True
   import pandas as pd
   import numpy as np
+  from IPython.display import HTML, display
+  import tabulate
 #+END_SRC
 
-* Parse qsub output file
+* Systematics from minimization
+Simulations are all the same (seed is 31415) and we estimate the intrinsic variance on
+cosmo. parameters /i.e./ the systematics from minimization from 100 simulations
+
+#+BEGIN_SRC ipython :session cm :results none
+  def get_params(path, pattern="*.likelihood"):
+      import os, glob
+      all_files = glob.glob(os.path.join(path, pattern))
+      # Sort alphabetically
+      all_files.sort()
+
+      header = pd.read_csv(all_files[0], delim_whitespace=True).columns[1:]
+      df = pd.concat((pd.read_table(f, delim_whitespace=True) for f in all_files))
+
+      # Remove '#' in header
+      df.drop(df.columns[[-1,]], axis=1, inplace=True)
+      df.columns = header
+      df.insert(value=df.chi2/2/1944, column="chi2_ndf", loc=7)
+      params = np.array(df.iloc[:, 2:8])
+      return params
+#+END_SRC
+
+#+BEGIN_SRC ipython :session cm :results none
+  params = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/100_sims_syst")
+#+END_SRC
+
+#+BEGIN_SRC ipython :session cm :results none
+  labels = [r"$\theta_\mathrm{MC}$",
+            r"$A_\mathrm{s}$",
+            r"$n_\mathrm{s}$",
+            r"$\Omega_\mathrm{b}h^2$",
+            r"$\Omega_\mathrm{c}h^2$",
+            r"$\chi^2/\mathrm{ndf}$"]
+  min_mean = np.mean(params, axis=0)
+  min_std  = np.std(params, axis=0)
+  lines = [[r"$\mu$"], [r"$\sigma$"]]
+  table = np.stack([min_mean, min_std])
+  table = np.append(lines, table, axis=1)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session cm :results none
+  display(HTML(tabulate.tabulate(table, headers=labels, tablefmt="html")))
+#+END_SRC
+
+** Org table                                                      :noexport:
+#+BEGIN_SRC ipython :session cm :results raw output
+  import tabulate
+  print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|          | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
+|----------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
+| $\mu$    |            0.0104275 |    2.10469e-09 |       0.975453 |              0.0224105 |               0.116425 |              0.975523 |
+| $\sigma$ |          8.08209e-08 |    3.69492e-13 |    0.000129202 |            6.52134e-06 |            7.14235e-05 |           3.21921e-06 |
+
+* Compare sucessfull and unsucessful minimization
+** Parse qsub output file
 #+BEGIN_SRC ipython :session cm :results none
   import os, glob
 
@@ -60,7 +119,7 @@
   print("INFO: Read {} files".format(len(all_files)))
 #+END_SRC
 
-* Convert =list= into =pandas.DataFrame=
+** Convert =list= into =pandas.DataFrame=
 #+BEGIN_SRC ipython :session cm :results drawer
   df = pd.DataFrame({"duration": np.array(stop_time)-np.array(start_time),
                      "chi2_theory": chi2_theory,
@@ -86,7 +145,7 @@
 #+END_EXAMPLE
 :end:
 
-* Get duration statistics
+** Get duration statistics
 #+BEGIN_SRC ipython :session cm :results drawer
   df.duration.describe()
 #+END_SRC
@@ -107,7 +166,7 @@
 #+END_EXAMPLE
 :end:
 
-* Get number of sucessfull minimization
+** Get number of sucessfull minimization
 #+BEGIN_SRC ipython :session cm :results drawer
   np.sum(df.success)
 #+END_SRC
@@ -131,7 +190,7 @@ How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, 
 : (252, 51)
 :end:
 
-** Plot distribution of $\chi^2$ between successfull and unsuccessful minimizations
+*** Plot distribution of $\chi^2$ between successfull and unsuccessful minimizations
 #+BEGIN_SRC ipython :session cm :results none
   import seaborn as sb
 #+END_SRC
@@ -184,66 +243,83 @@ How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, 
 [[file:./obipy-resources/ss5Ybv.png]]
 :end:
 * Profiles
-** ns
+Build dictionnary of parameters and associated column in =OptmizeResult= object
 #+BEGIN_SRC ipython :session cm :results none
-  import os, glob
-
-  path =r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/profile_ns"
-  all_files = glob.glob(os.path.join(path, "*.pkl"))
-
-  import pickle
-  chi2s = np.empty(len(all_files))
-  var2profile = np.empty(len(all_files))
-  success = np.empty(len(all_files))
-  best = np.empty(len(all_files))
-
-  for i,f in enumerate(all_files):
-    results = pickle.load(open(f, "rb"))
-
-    # Get minimization configuration
-    setup = results.get("setup")
-    lmin, lmax = setup.get("experiment").get("lmin"), setup.get("experiment").get("lmax")
-    ndf = lmax - lmin - 4
-
-    # Get optimization results
-    opt_result = results.get("results").get("OptimizeResult")
-    par = results.get("setup").get("cobaya").get("params").get("ns")
-    if isinstance(par, float):
-      var2profile[i] = par
-      best[i] = False
-    else:
-      var2profile[i] = opt_result.get("x")[2]
-      best[i] = True
-    chi2s[i] = opt_result.get("fun")/ndf
-    success[i] = False if "failed" in opt_result.get("message") else True
+  parnames = {
+      "cosmomc_theta" : {"latex": r"$\theta_\mathrm{MC}$", "col": 0},
+      "logA" : {"latex": r"$\log(10^{10}A_\mathrm{s})$", "col": 1},
+      "ns" : {"latex": r"$n_\mathrm{s}$", "col": 2},
+      "ombh2" : {"latex": r"$\Omega_\mathrm{b}h^2$", "col": 3},
+      "omch2" : {"latex": r"$\Omega_\mathrm{c}h^2$", "col": 4},
+  }
 #+END_SRC
 
-Mask for good/bad minization
+Get params from =pickle= object
 #+BEGIN_SRC ipython :session cm :results none
-  good = (success == True)
-  bad  = (success == False)
-  mini = (best == True)
+  def get_params(path, pattern="*.pkl", parname=None):
+      import os, glob
+      all_files = glob.glob(os.path.join(path, pattern))
+
+      chi2s = np.empty(len(all_files))
+      values = np.empty(len(all_files))
+      success = np.empty(len(all_files))
+      import pickle
+      for i, f in enumerate(all_files):
+          results = pickle.load(open(f, "rb"))
+
+          # Get minimization configuration
+          setup = results.get("setup")
+          lmin, lmax = setup.get("experiment").get("lmin"), setup.get("experiment").get("lmax")
+          ndf = lmax - lmin
+
+          # Get optimization results
+          opt_result = results.get("results").get("OptimizeResult")
+          par = setup.get("cobaya").get("params").get(parname)
+          if isinstance(par, float):
+              values[i] = par
+              ndf -= 4
+          elif par.get("value"):
+              values[i] = par.get("value")
+              ndf -= 4
+          else:
+              col = int(parnames[parname]["col"])
+              values[i] = opt_result.get("x")[col]
+              ndf -= 5
+          chi2s[i] = opt_result.get("fun")/ndf
+          success[i] = False if "failed" in opt_result.get("message") else True
+      arr = np.array([values, chi2s, success]).transpose()
+      return pd.DataFrame(arr, columns=["val", "chi2", "ok"])
 #+END_SRC
 
-Group $\chi^2$ by parameter value and find the minimal one
+Plot everything together
 #+BEGIN_SRC ipython :session cm :results raw drawer
-  df = pd.DataFrame({"chi2": chi2s, "var": var2profile})
-  dff = df.groupby("var").min()
-  plt.plot(dff, "og")
-  plt.plot(var2profile[mini], chi2s[mini], "^r", alpha=0.5, label="best min.")
+  plt.figure(figsize=(14, 10))
+  for i, par in enumerate(parnames):
+    params = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/profile", "*_{}_*.pkl".format(par), par)
+    good = (params.ok == True)
 
-  # Fit with a 2nd order polynomial
-  p = np.poly1d(np.polyfit(dff.index, dff.chi2, 2))
-  x = np.linspace(dff.index[0], dff.index[-1], 100)
-  plt.plot(x, p(x), "-r", label="polynomial fit")
-  plt.xlabel(r"$n_\mathrm{s}$")
-  plt.ylabel(r"$\chi^2/\mathrm{ndf}$")
-  plt.legend()
+    df = params.groupby("val").min()
+    plt.subplot(2, 3, i+1)
+    plt.plot(df.index, df.chi2, "og", label="")
+    mins = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/profile", "*maximum_[0-9]*.pkl", par)
+    plt.plot(mins.val, mins.chi2, "^r", alpha=0.5, label="best min.")
+
+    # Fit with a 2nd order polynomial
+    p = np.poly1d(np.polyfit(df.index, df.chi2, 2))
+    x = np.linspace(df.index[0], df.index[-1], 100)
+    plt.plot(x, p(x), "-r", label="polynomial fit")
+    plt.xlabel(parnames[par]["latex"], fontsize=13)
+    if not i%3:
+      plt.ylabel(r"$\chi^2/\mathrm{ndf}$")
+    # else:
+      # plt.gca().set_yticklabels([])
+    # plt.ylim(0.9, 1.5)
+    plt.legend()
+  plt.subplots_adjust(hspace=0.2, wspace=0.25)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[117]:
-: <matplotlib.legend.Legend at 0x7fa14069dc88>
-[[file:./obipy-resources/kcO3Th.png]]
+# Out[242]:
+[[file:./obipy-resources/wLoSyu.png]]
 :end:
