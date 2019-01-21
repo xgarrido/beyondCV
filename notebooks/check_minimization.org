@@ -1,0 +1,249 @@
+#+TITLE: Checking minimization from MINUIT/cobaya
+
+* Preamble
+#+BEGIN_SRC ipython :session cm :results none
+  %matplotlib inline
+  import matplotlib.pyplot as plt
+  plt.rcParams["text.usetex"] = True
+  import pandas as pd
+  import numpy as np
+#+END_SRC
+
+* Parse qsub output file
+#+BEGIN_SRC ipython :session cm :results none
+  import os, glob
+
+  path =r"/home/garrido/Workdir/CMB/analysis/beyondCV/script/ell_50_2000"
+  all_files = glob.glob(os.path.join(path, "*.o*"))
+
+  chi2_theory = []
+  chi2_begin  = []
+  chi2_end    = []
+  success     = []
+  surveys     = []
+  start_time  = []
+  stop_time   = []
+  seeds       = []
+
+  def date2time(line):
+      time = line.split(" ", maxsplit=3)[-1]
+      time = time[:-5].strip()
+      return pd.to_datetime(time, format="%c")
+
+  for f in all_files:
+      find_begin = False
+      success += [False]
+      chi2_end += [0]
+      with open(f) as stream:
+          for line in stream:
+              if "DEBUG: seed" in line:
+                  seeds += [line.split("=")[1].strip()]
+              if "DEBUG: survey" in line:
+                  survey = line.split("=")[1].strip()
+                  if survey == "SO" or survey == "P":
+                    survey += "x" + survey
+                  surveys += [survey]
+              if "chi2(theo)/ndf" in line:
+                  if survey in line:
+                      chi2_theory += [float(line.split("=")[1].strip())]
+              if "chi2/ndf" in line:
+                  if not find_begin:
+                      chi2_begin += [float(line.split("=")[1].strip())]
+                      find_begin = True
+                  chi2_end[-1] = float(line.split("=")[1].strip())
+              if "Finished succesfully." in line:
+                  success[-1] = True
+              if "Started on" in line:
+                  start_time += [date2time(line)]
+              if "Ended on" in line:
+                  stop_time += [date2time(line)]
+  print("INFO: Read {} files".format(len(all_files)))
+#+END_SRC
+
+* Convert =list= into =pandas.DataFrame=
+#+BEGIN_SRC ipython :session cm :results drawer
+  df = pd.DataFrame({"duration": np.array(stop_time)-np.array(start_time),
+                     "chi2_theory": chi2_theory,
+                     "chi2_begin": chi2_begin,
+                     "chi2_end": chi2_end,
+                     "success": success,
+                     "survey": surveys},
+                    index=np.array(seeds, dtype=np.uint))
+  df.sort_index(inplace=True)
+  df.head()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[9]:
+#+BEGIN_EXAMPLE
+  duration  chi2_theory  chi2_begin  chi2_end  success survey
+  28 00:28:50     0.972313    3.095984  0.969023    False    PxP
+  28 00:16:03     1.005701    3.393066  1.004198     True  SOxSO
+  28 00:38:43     0.974076    3.282166  0.972015    False   SOxP
+  73 00:27:50     0.960580    2.186273  0.959675    False  SOxSO
+  73 00:11:16     0.969954    2.142016  0.969248     True   SOxP
+#+END_EXAMPLE
+:end:
+
+* Get duration statistics
+#+BEGIN_SRC ipython :session cm :results drawer
+  df.duration.describe()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[10]:
+#+BEGIN_EXAMPLE
+  count                      3003
+  mean     0 days 00:20:38.789543
+  std      0 days 00:08:35.697947
+  min             0 days 00:03:56
+  25%             0 days 00:14:32
+  50%             0 days 00:19:39
+  75%             0 days 00:25:26
+  max             0 days 01:47:28
+  Name: duration, dtype: object
+#+END_EXAMPLE
+:end:
+
+* Get number of sucessfull minimization
+#+BEGIN_SRC ipython :session cm :results drawer
+  np.sum(df.success)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[11]:
+: 1907
+:end:
+
+How many minimizations succeed for the three configurations /i.e./ SOxSO, SOxP, PxP
+#+BEGIN_SRC ipython :session cm :results drawer
+  dff = df.groupby(df.index).success.describe()
+  np.sum((dff.top == True) & (dff.freq == 3)), \
+  np.sum((dff.top == False) & (dff.freq == 3))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[12]:
+: (252, 51)
+:end:
+
+** Plot distribution of $\chi^2$ between successfull and unsuccessful minimizations
+#+BEGIN_SRC ipython :session cm :results none
+  import seaborn as sb
+#+END_SRC
+
+#+BEGIN_SRC ipython :session cm :results raw drawer
+  tmpl="{}\n$\chi^2$ = {:.3f} $\pm$ {:.3f}"
+  df1 = df.chi2_theory[df.success]
+  df2 = df.chi2_theory[~df.success]
+  sb.distplot(df1, label=tmpl.format("sucessfull",np.mean(df1),np.std(df1)), color="green", axlabel=r"$\chi^2$ (theory)")
+  sb.distplot(df2, label=tmpl.format("unsuccessful",np.mean(df2), np.std(df2)), color="red", axlabel=r"$\chi^2$ (theory)")
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[14]:
+: <matplotlib.legend.Legend at 0x7fa144f71a58>
+[[file:./obipy-resources/cGePBD.png]]
+:end:
+
+#+BEGIN_SRC ipython :session cm :results raw drawer
+  tmpl="{}\n$\chi^2$ = {:.3f} $\pm$ {:.3f}"
+  df1 = df.chi2_begin[df.success]
+  df2 = df.chi2_begin[~df.success]
+  sb.distplot(df1, label=tmpl.format("sucessfull",np.mean(df1),np.std(df1)), color="green", axlabel=r"$\chi^2$ (begin)")
+  sb.distplot(df2, label=tmpl.format("unsuccessful",np.mean(df2),np.std(df2)), color="red", axlabel=r"$\chi^2$ (begin)")
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[15]:
+: <matplotlib.legend.Legend at 0x7fa155150dd8>
+[[file:./obipy-resources/UKCSxJ.png]]
+:end:
+
+#+BEGIN_SRC ipython :session cm :results raw drawer
+  tmpl="{}\n$\chi^2$ = {:.3f} $\pm$ {:.3f}"
+  df1 = df.chi2_end[df.success]
+  df2 = df.chi2_end[~df.success]
+  sb.distplot(df1, label=tmpl.format("sucessfull",np.mean(df1),np.std(df1)), color="green", axlabel=r"$\chi^2$ (found)")
+  sb.distplot(df2, label=tmpl.format("unsuccessful",np.mean(df2),np.std(df2)), color="red", axlabel=r"$\chi^2$ (found)")
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[16]:
+: <matplotlib.legend.Legend at 0x7fa1550a6908>
+[[file:./obipy-resources/ss5Ybv.png]]
+:end:
+* Profiles
+** ns
+#+BEGIN_SRC ipython :session cm :results none
+  import os, glob
+
+  path =r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/profile_ns"
+  all_files = glob.glob(os.path.join(path, "*.pkl"))
+
+  import pickle
+  chi2s = np.empty(len(all_files))
+  var2profile = np.empty(len(all_files))
+  success = np.empty(len(all_files))
+  best = np.empty(len(all_files))
+
+  for i,f in enumerate(all_files):
+    results = pickle.load(open(f, "rb"))
+
+    # Get minimization configuration
+    setup = results.get("setup")
+    lmin, lmax = setup.get("experiment").get("lmin"), setup.get("experiment").get("lmax")
+    ndf = lmax - lmin - 4
+
+    # Get optimization results
+    opt_result = results.get("results").get("OptimizeResult")
+    par = results.get("setup").get("cobaya").get("params").get("ns")
+    if isinstance(par, float):
+      var2profile[i] = par
+      best[i] = False
+    else:
+      var2profile[i] = opt_result.get("x")[2]
+      best[i] = True
+    chi2s[i] = opt_result.get("fun")/ndf
+    success[i] = False if "failed" in opt_result.get("message") else True
+#+END_SRC
+
+Mask for good/bad minization
+#+BEGIN_SRC ipython :session cm :results none
+  good = (success == True)
+  bad  = (success == False)
+  mini = (best == True)
+#+END_SRC
+
+Group $\chi^2$ by parameter value and find the minimal one
+#+BEGIN_SRC ipython :session cm :results raw drawer
+  df = pd.DataFrame({"chi2": chi2s, "var": var2profile})
+  dff = df.groupby("var").min()
+  plt.plot(dff, "og")
+  plt.plot(var2profile[mini], chi2s[mini], "^r", alpha=0.5, label="best min.")
+
+  # Fit with a 2nd order polynomial
+  p = np.poly1d(np.polyfit(dff.index, dff.chi2, 2))
+  x = np.linspace(dff.index[0], dff.index[-1], 100)
+  plt.plot(x, p(x), "-r", label="polynomial fit")
+  plt.xlabel(r"$n_\mathrm{s}$")
+  plt.ylabel(r"$\chi^2/\mathrm{ndf}$")
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[117]:
+: <matplotlib.legend.Legend at 0x7fa14069dc88>
+[[file:./obipy-resources/kcO3Th.png]]
+:end:
