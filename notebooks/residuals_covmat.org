@@ -1,0 +1,248 @@
+* Estimation of standard deviation of CMB spectra residuals
+** Emacs config                                                   :noexport:
+#+BEGIN_SRC elisp :session beyondCV :results none
+  (pyvenv-workon "beyondCV")
+#+END_SRC
+
+** Load yaml file
+#+BEGIN_SRC ipython :session beyondCV :results none
+    import yaml
+    with open("../beyondCV.yaml", "r") as stream:
+        setup = yaml.load(stream)
+#+END_SRC
+
+** Generation of CMB spectrum
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  import numpy as np
+  # Get experiment setup
+  experiment = setup["experiment"]
+  lmin, lmax = experiment["lmin"], experiment["lmax"]
+
+  from beyondCV import utils
+  simu = setup["simulation"]
+  cosmo = simu["cosmo. parameters"]
+
+  Dltt = utils.get_theory_cls(setup, lmax)
+  ls = np.arange(lmin, lmax)
+  Dl = Dltt[lmin:lmax]
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[83]:
+:end:
+
+Plot CMB spectrum
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  %matplotlib inline
+  import matplotlib.pyplot as plt
+  plt.rcParams["text.usetex"] = True
+  plt.plot(ls, Dl)
+  plt.xlabel(r"$\ell$")
+  plt.ylabel(r"$D_\ell$")
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[114]:
+: Text(0, 0.5, '$D_\\ell$')
+[[file:./obipy-resources/k0h95m.png]]
+:end:
+
+** Get noise from experiment
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  freq_Planck, DNl_array_Planck = utils.get_noise(experiment, "Planck")
+  freq_Planck = list(freq_Planck)
+  freq_Planck.append("all")
+
+  freq_SO, DNl_array_SO = utils.get_noise(experiment, "SO")
+  freq_SO = list(freq_SO)
+  freq_SO.append("all")
+
+  ns = {}
+  DNl = {}
+  for freq in freq_Planck:
+      key = "Planck_%s" % freq
+      ns[key] = 2.
+      DNl[key] = DNl_array_Planck[freq]*ns[key]
+
+  for freq in freq_SO:
+      key = "SO_%s" % freq
+      ns[key] = 10.
+      DNl[key] = DNl_array_SO[freq]*ns[key]
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[85]:
+:end:
+
+** Compute covariance matrices
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  fsky = experiment["fsky"]
+  covmat_SSSS = utils.cov("SO_all", "SO_all", "SO_all", "SO_all", ns, ls, Dl, DNl, fsky)
+  covmat_SSSP = utils.cov("SO_all", "SO_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+  covmat_SSPP = utils.cov("SO_all", "SO_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+  covmat_SPSP = utils.cov("SO_all", "Planck_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+  covmat_SPPP = utils.cov("SO_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+  covmat_PPPP = utils.cov("Planck_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+
+  covmat_master = np.zeros((3,3,len(Dl)))
+  Dl_obs = np.zeros((3,len(Dl)))
+
+  covmat_master[0,0,:] = covmat_SSSS
+  covmat_master[0,1,:] = covmat_SSSP
+  covmat_master[0,2,:] = covmat_SSPP
+  covmat_master[1,0,:] = covmat_SSSP
+  covmat_master[1,1,:] = covmat_SPSP
+  covmat_master[1,2,:] = covmat_SPPP
+  covmat_master[2,0,:] = covmat_SSPP
+  covmat_master[2,1,:] = covmat_SPPP
+  covmat_master[2,2,:] = covmat_PPPP
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[86]:
+:end:
+
+Plot the =covmat=
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  plt.semilogy()
+  plt.plot(ls, covmat_PPPP, label=r"$\Xi^{\rm PxP,PxP}$")
+  plt.plot(ls, covmat_SSSS, label=r"$\Xi^{\rm SOxSO,SOxSO}$")
+  plt.plot(ls, covmat_SSPP, label=r"$\Xi^{\rm SOxSO,PxP}$")
+  plt.plot(ls, covmat_SSSP, label=r"$\Xi^{\rm SOxSO,SOxP}$")
+  plt.plot(ls, covmat_SPSP, label=r"$\Xi^{\rm SOxP,SOxP}$")
+  plt.plot(ls, covmat_SPPP, label=r"$\Xi^{\rm SOxP,PxP}$")
+  plt.xlabel(r"$\ell$")
+  plt.ylim(0.1, 1e9)
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[139]:
+: <matplotlib.legend.Legend at 0x7ff204c04c88>
+[[file:./obipy-resources/3m1bOp.png]]
+:end:
+
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  plt.semilogy()
+  plt.plot(ls, covmat_PPPP, label=r"$\Xi^{\rm PxP,PxP}$")
+  plt.plot(ls, covmat_SSSS, label=r"$\Xi^{\rm SOxSO,SOxSO}$")
+  plt.plot(ls, covmat_SSSS + covmat_PPPP - 2*covmat_SSPP, color="0.5", linestyle="dashed", label=r"$C_1$")
+  plt.plot(ls, covmat_SSSS + covmat_PPPP + 2*covmat_SSPP - 4*(covmat_SSSP+covmat_SPPP) + 4*covmat_SPSP,
+           color="k", linestyle="dashed", label=r"$C_2$")
+  plt.ylim(0.1, 1e9)
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[138]:
+: <matplotlib.legend.Legend at 0x7ff204d7c320>
+[[file:./obipy-resources/ljdSJA.png]]
+:end:
+
+
+** Generate random CMB spectrum given the master covariance matrix
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  for i in range(len(Dl)):
+      mat = utils.svd_pow(covmat_master[:,:,i],1./2)
+      Dl_obs[:,i] = Dl[i] + np.dot(mat, np.random.randn(3))
+
+  Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP = Dl_obs[0,:], Dl_obs[1,:], Dl_obs[2,:]
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[10]:
+:end:
+
+Plot the resulting CMB spectrum
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  grid = plt.GridSpec(4, 1, hspace=0, wspace=0)
+  main = plt.subplot(grid[0:3], xticklabels=[])
+  main.semilogy()
+  main.plot(ls, Dl_obs_SxS, label="SOxSO",alpha=0.5)
+  main.plot(ls, Dl_obs_SxP, label="SOxP",alpha=0.5)
+  main.plot(ls, Dl_obs_PxP, label="PxP",alpha=0.5)
+  main.legend()
+  dev = plt.subplot(grid[3], ylim=[-5,5])
+  dev.plot(ls, 100*(1 - Dl_obs_SxS/Dl_obs_SxS), alpha=0.5)
+  dev.plot(ls, 100*(1 - Dl_obs_SxP/Dl_obs_SxS), alpha=0.5)
+  dev.plot(ls, 100*(1 - Dl_obs_PxP/Dl_obs_SxS), alpha=0.5)
+  dev.set_ylabel(r"$\Delta D_\ell\;[\sigma]$")
+  dev.set_xlabel(r"$\ell$")
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[11]:
+: Text(0.5, 0, '$\\ell$')
+[[file:./obipy-resources/tWEaTz.png]]
+:end:
+
+** Compute variances of the residuals
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  nbr_sims = 1000
+  Dl_SSmPP = np.empty((nbr_sims, len(Dl)))
+  Dl_SSmSP = np.empty((nbr_sims, len(Dl)))
+  Dl_SSpPPm2SP = np.empty((nbr_sims, len(Dl)))
+
+  for n in range(nbr_sims):
+      for i in range(len(Dl)):
+          mat = utils.svd_pow(covmat_master[:,:,i],1./2)
+          Dl_obs[:,i] = Dl[i] + np.dot(mat, np.random.randn(3))
+
+      Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP = Dl_obs[0,:], Dl_obs[1,:], Dl_obs[2,:]
+      Dl_SSmPP[n,:] = Dl_obs_SxS - Dl_obs_PxP
+      Dl_SSmSP[n,:] = Dl_obs_SxS - Dl_obs_SxP
+      Dl_SSpPPm2SP[n,:] = Dl_obs_SxS + Dl_obs_PxP - 2*Dl_obs_SxP
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[130]:
+:end:
+
+** Plot variance of residuals
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  plt.semilogy()
+  plt.plot(ls, np.std(Dl_SSmPP, axis=0), label="SOxSO - PxP")
+  plt.plot(ls, np.std(Dl_SSpPPm2SP, axis=0), label="SOxSO + PxP - 2SOxP")
+  plt.plot(ls, np.std(Dl_SSmSP, axis=0), label="SOxSO - SOxP")
+  plt.plot(ls, np.sqrt(covmat_SSSS + covmat_PPPP - 2*covmat_SSPP), color="k", linestyle="dashed", label=r"$C_1, C_2, C_3$")
+  plt.plot(ls, np.sqrt(covmat_SSSS + covmat_PPPP + 2*covmat_SSPP - 4*(covmat_SSSP+covmat_SPPP) + 4*covmat_SPSP),
+           color="k", linestyle="dashed")
+  plt.plot(ls, np.sqrt(covmat_SSSS - 2*covmat_SSSP + covmat_SPSP),
+           color="k", linestyle="dashed")
+  plt.xlabel(r"$\ell$")
+  plt.axvline(50, color="0.75", linestyle="dashed")
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[137]:
+: <matplotlib.legend.Legend at 0x7ff204eccc88>
+[[file:./obipy-resources/KpYg16.png]]
+:end:
+
+** Appendix                                                       :noexport:
+Function to plot mean and variance
+#+BEGIN_SRC ipython :session beyondCV :results raw drawer
+  def plot_mean_std(mean, std, label):
+    grid = plt.GridSpec(4, 1, hspace=0, wspace=0)
+    sub1 = plt.subplot(grid[:2], xticklabels=[])
+    sub1.plot(ls, mean, label=label)
+    sub1.axhline(1, color="r")
+    sub1.set_ylabel(r"$\langle\Delta D_\ell\rangle$")
+    sub1.legend()
+    sub2 = plt.subplot(grid[2:])
+    sub2.semilogy()
+    sub2.plot(ls, std)
+    sub2.set_ylabel(r"$\sigma(\Delta D_\ell)$")
+    sub2.set_xlabel(r"$\ell$")
+#+END_SRC
