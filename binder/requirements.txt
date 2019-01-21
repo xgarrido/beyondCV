@@ -1,6 +1,9 @@
+git+https://github.com/xgarrido/beyondCV.git
+cobaya
 numpy
 matplotlib
 seaborn
 pandas
+seaborn
 tabulate
 GetDist
