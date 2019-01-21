@@ -1,9 +1,11 @@
-* Estimation of standard deviation of CMB spectra residuals
-** Emacs config                                                   :noexport:
+#+TITLE: Checking Planck parameters beyond cosmic variance
+
+* Emacs config                                                     :noexport:
 #+BEGIN_SRC elisp :session rc :results none
   (pyvenv-workon "beyondCV")
 #+END_SRC
 
+* Estimation of standard deviation of CMB spectra residuals
 ** yaml configuration file                                        :noexport:
 #+BEGIN_SRC yaml :tangle residuals_covmat.yaml
   # Simulation parameters
@@ -99,6 +101,39 @@ Plot CMB spectrum
       ns[key] = 10.
       DNl[key] = DNl_array_SO[freq]*ns[key]
 #+END_SRC
+
+Plot the experiment noise for Planck and Simons Observatory
+#+BEGIN_SRC ipython :session rc :results raw drawer
+  plt.figure(figsize=(10,5))
+  grid = plt.GridSpec(1, 2, hspace=0, wspace=0)
+  planck = plt.subplot(grid[0])
+  planck.semilogy()
+  planck.plot(ls, Dl, "0.5")
+  for freq in freq_Planck:
+      planck.plot(ls, DNl_array_Planck[freq], label="Planck noise %s GHz" % freq)
+  planck.set_ylabel(r"$\frac{\ell(\ell+1)}{2\pi}\,C_\ell$ [$\mu$K$^2$]")
+  planck.set_xlabel(r"$\ell$")
+  planck.set_ylim(1, 5*10**4)
+  planck.set_xlim(lmin, lmax-10)
+  planck.legend()
+  so = plt.subplot(grid[1])
+  so.semilogy()
+  so.set_yticklabels([])
+  so.plot(ls, Dl, "0.5")
+  for freq in freq_SO:
+      so.plot(ls, DNl_array_SO[freq], label="SO noise %s GHz" % freq)
+  so.set_xlabel(r"$\ell$")
+  so.set_ylim(1, 5*10**4)
+  so.set_xlim(lmin, lmax)
+  so.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[155]:
+: <matplotlib.legend.Legend at 0x7f9fe64109e8>
+[[file:./obipy-resources/96Rd4S.png]]
+:end:
 
 ** Compute covariance matrices
 #+BEGIN_SRC ipython :session rc :results none
