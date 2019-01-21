@@ -1,0 +1,33 @@
+# Simulation parameters
+simulation:
+  cosmo. parameters:
+    #H0=67.5 # use theta instead
+    cosmomc_theta : 0.0104164
+    As            : 2.128494467439464e-09
+    ombh2         : 0.02212
+    omch2         : 0.1210
+    ns            : 0.9649
+    tau           : 0.058
+    mnu           : 0.06
+    omk           : 0
+    r             : 0
+    ALens         : 1.
+
+# Experiment configuration
+experiment:
+  lmin : 2
+  lmax : 3000
+  fsky : 0.4
+
+  freq_Planck: [100, 143, 217] # GHz
+  noise_Planck: [77.4, 33.0, 46.8]
+  beam_Planck: [9.66, 7.22, 4.90]
+
+  freq_all_SO: [27, 39, 93, 145, 225, 280] # GHz
+  freq_SO: [93, 145, 225] # GHz
+
+# Minimal cobaya configuration
+cobaya:
+  theory:
+    camb:
+      stop_at_error: False
