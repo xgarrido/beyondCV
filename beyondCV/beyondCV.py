@@ -3,53 +3,7 @@
 # Global
 import numpy as np
 
-def simulation(setup):
-    """
-    Simulate CMB power spectrum given a set of cosmological parameters and noise level.
-    """
-
-    # Get experiment setup
-    experiment = setup["experiment"]
-    lmin, lmax = experiment["lmin"], experiment["lmax"]
-
-    from beyondCV import utils
-    Dltt = utils.get_theory_cls(setup, lmax)
-    ls = np.arange(lmin, lmax)
-    Dl = Dltt[lmin:lmax]
-
-    # Get experiment noise
-    freq_Planck, DNl_array_Planck = utils.get_noise(experiment, "Planck")
-    freq_Planck = list(freq_Planck)
-    freq_Planck.append("all")
-
-    ns = {}
-    DNl = {}
-    for freq in freq_Planck:
-        key = "Planck_%s" % freq
-        ns[key] = 2.
-        DNl[key] = DNl_array_Planck[freq]*ns[key]
-
-    if setup.get("do_plot"):
-        import matplotlib.pyplot as plt
-        plt.semilogy()
-        plt.plot(ls, Dl)
-        for freq in freq_Planck:
-            plt.plot(ls, DNl_array_Planck[freq], label="noise %s" % freq)
-        plt.ylabel(r"$D_{\ell}$")
-        plt.xlabel(r"$\ell$")
-        plt.ylim(1, 5*10**4)
-        plt.xlim(1, 3900)
-        plt.legend()
-        plt.show()
-
-    covmat_PPPP = utils.cov("Planck_all","Planck_all","Planck_all","Planck_all", ns, ls, Dl, DNl, experiment["fsky"])
-    epsilon_PPPP = np.sqrt(covmat_PPPP)*np.random.randn(len(covmat_PPPP))
-    Dl_obs = Dl + epsilon_PPPP
-    print("chi2(theo)/ndf = ", np.sum((Dl_obs - Dl)**2/covmat_PPPP)/len(ls))
-
-    return Dl_obs, covmat_PPPP
-
-def simulation_full(setup):
+def simulation(setup, full=False):
     """
     Simulate CMB power spectrum given a set of cosmological parameters and noise level.
     """
@@ -81,70 +35,52 @@ def simulation_full(setup):
         ns[key] = 2.
         DNl[key] = DNl_array_Planck[freq]*ns[key]
 
-    for freq in freq_SO:
-        key = "SO_%s" % freq
-        ns[key] = 10.
-        DNl[key] = DNl_array_SO[freq]*ns[key]
-
     fsky = experiment["fsky"]
-    covmat_SSSS = utils.cov("SO_all", "SO_all", "SO_all", "SO_all", ns, ls, Dl, DNl, fsky)
-    covmat_SSSP = utils.cov("SO_all", "SO_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-    covmat_SSPP = utils.cov("SO_all", "SO_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-    covmat_SPSP = utils.cov("SO_all", "Planck_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-    covmat_SPPP = utils.cov("SO_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-    covmat_PPPP = utils.cov("Planck_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+    if full:
+        for freq in freq_SO:
+            key = "SO_%s" % freq
+            ns[key] = 10.
+            DNl[key] = DNl_array_SO[freq]*ns[key]
 
-    covmat_master = np.zeros((3,3,len(Dl)))
-    Dl_obs = np.zeros((3,len(Dl)))
+        covmat_SSSS = utils.cov("SO_all", "SO_all", "SO_all", "SO_all", ns, ls, Dl, DNl, fsky)
+        covmat_SSSP = utils.cov("SO_all", "SO_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+        covmat_SSPP = utils.cov("SO_all", "SO_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+        covmat_SPSP = utils.cov("SO_all", "Planck_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+        covmat_SPPP = utils.cov("SO_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+        covmat_PPPP = utils.cov("Planck_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
 
-    covmat_master[0,0,:] = covmat_SSSS
-    covmat_master[0,1,:] = covmat_SSSP
-    covmat_master[0,2,:] = covmat_SSPP
-    covmat_master[1,0,:] = covmat_SSSP
-    covmat_master[1,1,:] = covmat_SPSP
-    covmat_master[1,2,:] = covmat_SPPP
-    covmat_master[2,0,:] = covmat_SSPP
-    covmat_master[2,1,:] = covmat_SPPP
-    covmat_master[2,2,:] = covmat_PPPP
+        covmat_master = np.zeros((3,3,len(Dl)))
+        Dl_obs = np.zeros((3,len(Dl)))
 
-    for i in range(len(Dl)):
-        mat = utils.svd_pow(covmat_master[:,:,i],1./2)
-        Dl_obs[:,i] = Dl[i] + np.dot(mat, np.random.randn(3))
+        covmat_master[0,0,:] = covmat_SSSS
+        covmat_master[0,1,:] = covmat_SSSP
+        covmat_master[0,2,:] = covmat_SSPP
+        covmat_master[1,0,:] = covmat_SSSP
+        covmat_master[1,1,:] = covmat_SPSP
+        covmat_master[1,2,:] = covmat_SPPP
+        covmat_master[2,0,:] = covmat_SSPP
+        covmat_master[2,1,:] = covmat_SPPP
+        covmat_master[2,2,:] = covmat_PPPP
 
-    Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP = Dl_obs[0,:], Dl_obs[1,:], Dl_obs[2,:]
+        for i in range(len(Dl)):
+            mat = utils.svd_pow(covmat_master[:,:,i],1./2)
+            Dl_obs[:,i] = Dl[i] + np.dot(mat, np.random.randn(3))
 
-    if setup.get("do_plot"):
-        import matplotlib.pyplot as plt
-        plt.semilogy()
-        plt.plot(ls, covmat_SSSS, label="SSSS")
-        plt.plot(ls, covmat_SSSP, label="SSSP")
-        plt.plot(ls, covmat_SSPP, label="SSPP")
-        plt.plot(ls, covmat_SPSP, label="SPSP")
-        plt.plot(ls, covmat_SPPP, label="SPPP")
-        plt.plot(ls, covmat_PPPP, label="PPPP")
-        plt.legend()
-        plt.show()
+        Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP = Dl_obs[0,:], Dl_obs[1,:], Dl_obs[2,:]
 
-        grid = plt.GridSpec(4, 1, hspace=0, wspace=0)
-        main = plt.subplot(grid[0:3], xticklabels=[])
-        main.semilogy()
-        main.plot(ls, Dl_obs_SxS, label="SOxSO",alpha=0.5)
-        main.plot(ls, Dl_obs_SxP, label="SOxP",alpha=0.5)
-        main.plot(ls, Dl_obs_PxP, label="PxP",alpha=0.5)
-        main.legend()
-        dev = plt.subplot(grid[3], ylim=[-5,5])
-        dev.plot(ls, 100*(1 - Dl_obs_SxS/Dl_obs_SxS), alpha=0.5)
-        dev.plot(ls, 100*(1 - Dl_obs_SxP/Dl_obs_SxS), alpha=0.5)
-        dev.plot(ls, 100*(1 - Dl_obs_PxP/Dl_obs_SxS), alpha=0.5)
-        dev.set_ylabel(r"$\Delta D_\ell\;[\sigma]$")
-        dev.set_xlabel(r"$\ell$")
-        plt.show()
+        print("SOxSO chi2(theo)/ndf = ", np.sum((Dl_obs_SxS - Dl)**2/covmat_SSSS)/len(ls))
+        print("SOxP chi2(theo)/ndf = ", np.sum((Dl_obs_SxP - Dl)**2/covmat_SPSP)/len(ls))
+        print("PxP chi2(theo)/ndf = ", np.sum((Dl_obs_PxP - Dl)**2/covmat_PPPP)/len(ls))
 
-    print("SOxSO chi2(theo)/ndf = ", np.sum((Dl_obs_SxS - Dl)**2/covmat_SSSS)/len(ls))
-    print("SOxP chi2(theo)/ndf = ", np.sum((Dl_obs_SxP - Dl)**2/covmat_SPSP)/len(ls))
-    print("PxP chi2(theo)/ndf = ", np.sum((Dl_obs_PxP - Dl)**2/covmat_PPPP)/len(ls))
+        return Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP, covmat_SSSS, covmat_SPSP, covmat_PPPP
+    else:
+        covmat_PPPP = utils.cov("Planck_all","Planck_all","Planck_all","Planck_all", ns, ls, Dl, DNl, experiment["fsky"])
+        epsilon_PPPP = np.sqrt(covmat_PPPP)*np.random.randn(len(covmat_PPPP))
+        Dl_obs = Dl + epsilon_PPPP
+        print("chi2(theo)/ndf = ", np.sum((Dl_obs - Dl)**2/covmat_PPPP)/len(ls))
 
-    return Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP, covmat_SSSS, covmat_SPSP, covmat_PPPP
+        return Dl_obs, covmat_PPPP
+
 
 def minimization(setup, Dl, cov):
     """
@@ -178,7 +114,7 @@ def main():
     parser.add_argument("-y", "--yaml-file", help="Yaml file holding sim/minization setup",
                         default=None, required=True)
     parser.add_argument("--survey", help="Set seed of random generator",
-                        choices = ["SO", "SOxP", "P"], required=True)
+                        choices = ["SO", "SOxP", "P"], default=None, required=False)
     parser.add_argument("--data-file", help="Data file holding simulated CMB spectrum and its covariance",
                         default=None, required=False)
     parser.add_argument("--seed-simulation", help="Set seed for the simulation random generator",
@@ -195,20 +131,27 @@ def main():
     with open(args.yaml_file, "r") as stream:
         setup = yaml.load(stream)
 
+    # Check survey
+    survey = args.survey
+    full = (survey != None)
+
     # Do the simulation
     if args.data_file:
         Dl, cov = np.loadtxt(args.data_file)
     else:
-        sims = simulation_full(setup)
+        sims = simulation(setup, full)
 
-    survey = args.survey
-    print("INFO: Doing minimization for '{}' survey".format(survey))
-    if survey == "SO":
-        Dl, cov = sims[0], sims[3]
-    elif survey == "SOxP":
-        Dl, cov = sims[1], sims[4]
-    elif survey == "P":
-        Dl, cov = sims[2], sims[5]
+    if not survey:
+        print("INFO: Doing minimization for Planck spectrum only")
+        Dl, cov = sims[0], sims[1]
+    else:
+        print("INFO: Doing minimization for '{}' survey".format(survey))
+        if survey == "SO":
+            Dl, cov = sims[0], sims[3]
+        elif survey == "SOxP":
+            Dl, cov = sims[1], sims[4]
+        elif survey == "P":
+            Dl, cov = sims[2], sims[5]
 
     # Do the minimization
     if args.seed_minimization:
