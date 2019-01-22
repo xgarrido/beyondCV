@@ -1,6 +1,3 @@
-# Misc
-do_plot: False
-
 # Simulation parameters
 simulation:
   cosmo. parameters:
