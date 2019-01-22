@@ -267,25 +267,17 @@ Get params from =pickle= object
       for i, f in enumerate(all_files):
           results = pickle.load(open(f, "rb"))
 
-          # Get minimization configuration
-          setup = results.get("setup")
-          lmin, lmax = setup.get("experiment").get("lmin"), setup.get("experiment").get("lmax")
-          ndf = lmax - lmin
-
           # Get optimization results
           opt_result = results.get("results").get("OptimizeResult")
-          par = setup.get("cobaya").get("params").get(parname)
+          par = results.get("setup").get("cobaya").get("params").get(parname)
           if isinstance(par, float):
               values[i] = par
-              ndf -= 4
           elif par.get("value"):
               values[i] = par.get("value")
-              ndf -= 4
           else:
               col = int(parnames[parname]["col"])
               values[i] = opt_result.get("x")[col]
-              ndf -= 5
-          chi2s[i] = opt_result.get("fun")/ndf
+          chi2s[i] = opt_result.get("fun")
           success[i] = False if "failed" in opt_result.get("message") else True
       arr = np.array([values, chi2s, success]).transpose()
       return pd.DataFrame(arr, columns=["val", "chi2", "ok"])
@@ -299,27 +291,26 @@ Plot everything together
     good = (params.ok == True)
 
     df = params.groupby("val").min()
+    chi2_min = np.min(df.chi2)
     plt.subplot(2, 3, i+1)
-    plt.plot(df.index, df.chi2, "og", label="")
+    plt.plot(df.index, df.chi2-chi2_min, "og")
     mins = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/profile", "*maximum_[0-9]*.pkl", par)
-    plt.plot(mins.val, mins.chi2, "^r", alpha=0.5, label="best min.")
+    plt.plot(mins.val, mins.chi2-chi2_min, "^r", alpha=0.5)
 
     # Fit with a 2nd order polynomial
-    p = np.poly1d(np.polyfit(df.index, df.chi2, 2))
+    p = np.poly1d(np.polyfit(df.index, df.chi2-chi2_min, 2))
     x = np.linspace(df.index[0], df.index[-1], 100)
-    plt.plot(x, p(x), "-r", label="polynomial fit")
+    plt.plot(x, p(x), "-r")
     plt.xlabel(parnames[par]["latex"], fontsize=13)
     if not i%3:
-      plt.ylabel(r"$\chi^2/\mathrm{ndf}$")
+      plt.ylabel(r"$\chi^2-\chi^2_\mathrm{min}$")
     # else:
       # plt.gca().set_yticklabels([])
-    # plt.ylim(0.9, 1.5)
-    plt.legend()
-  plt.subplots_adjust(hspace=0.2, wspace=0.25)
+  plt.subplots_adjust(hspace=0.2, wspace=0.15)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[242]:
-[[file:./obipy-resources/wLoSyu.png]]
+# Out[28]:
+[[file:./obipy-resources/uu2EgG.png]]
 :end:
