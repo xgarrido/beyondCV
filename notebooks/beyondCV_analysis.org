@@ -141,8 +141,8 @@
 
 #+RESULTS:
 :results:
-# Out[218]:
-: ((978, 6), (978, 6), (978, 6))
+# Out[192]:
+: ((978, 7), (978, 7), (978, 7))
 :end:
 
 #+BEGIN_SRC ipython :session bcv :results none
@@ -575,21 +575,54 @@ Set PxP deviation as standard for further comparison
 
 *** Summary
 **** SOxSO - PxP
-|                           | $\theta_\mathrm{MC}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $A_\mathrm{s}$ |
-|---------------------------+----------------------+----------------+------------------------+------------------------+----------------|
-| MCMC (n° 0)               |          8.42204e-07 |    0.000987998 |            2.94139e-05 |             0.00032552 |    1.69715e-12 |
-| MCMC (n° 1)               |          8.62444e-07 |     0.00100539 |            3.13933e-05 |            0.000324094 |    1.68814e-12 |
-| MCMC (n° 3)               |          8.60141e-07 |    0.000979011 |            3.14452e-05 |            0.000316173 |    1.66227e-12 |
-| MCMC (n° 4)               |          8.86752e-07 |     0.00095145 |            3.02972e-05 |            0.000314076 |    1.62794e-12 |
-| Min. ($\ell\in[2;3000]$)  |          3.76192e-06 |     0.00406034 |            0.000171957 |             0.00181588 |    9.58206e-12 |
-| Min. ($\ell\in[50;2000]$) |          2.99731e-06 |     0.00314853 |            0.000122405 |             0.00133315 |    7.16794e-12 |
-| Min. ($\ell\in[50;1500]$) |           1.8413e-06 |      0.0021341 |            7.39349e-05 |            0.000775937 |    4.23132e-12 |
+#+TBLNAME: soxso_pxp
+|                            | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
+|----------------------------+----------------------+----------------+----------------+------------------------+------------------------|
+| Planck (full $\ell$ range) |          4.88562e-06 |    1.22406e-11 |  0.00529791672 |            2.04027e-04 |          0.00223889971 |
+| MCMC (n° 0)                |          8.42204e-07 |    1.69715e-12 |    0.000987998 |            2.94139e-05 |             0.00032552 |
+| Min. ($\ell\in[2;3000]$)   |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |
+| Min. ($\ell\in[50;2000]$)  |          2.99731e-06 |    7.16794e-12 |     0.00314853 |            0.000122405 |             0.00133315 |
+| Min. ($\ell\in[50;1500]$)  |           1.8413e-06 |    4.23132e-12 |      0.0021341 |            7.39349e-05 |            0.000775937 |
+# | MCMC (n° 1)                |          8.62444e-07 |    1.68814e-12 |     0.00100539 |            3.13933e-05 |            0.000324094 |
+# | MCMC (n° 3)                |          8.60141e-07 |    1.66227e-12 |    0.000979011 |            3.14452e-05 |            0.000316173 |
+# | MCMC (n° 4)                |          8.86752e-07 |    1.62794e-12 |     0.00095145 |            3.02972e-05 |            0.000314076 |
 
 **** SOxP - SOxSO
+#+TBLNAME: soxp_soxso
+|                           | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
+|---------------------------+----------------------+----------------+----------------+------------------------+------------------------|
+| MCMC (n° 2)               |          4.37106e-07 |    7.95761e-13 |     0.00046037 |             1.4894e-05 |            0.000152093 |
+| Min. ($\ell\in[2;3000]$)  |          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |
+| Min. ($\ell\in[50;2000]$) |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |
+| Min. ($\ell\in[50;1500]$) |          9.88702e-07 |    2.64955e-12 |     0.00126386 |            4.27381e-05 |            0.000495158 |
 
-|                           | $\theta_\mathrm{MC}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $A_\mathrm{s}$ |
-|---------------------------+----------------------+----------------+------------------------+------------------------+----------------|
-| MCMC (n° 2)               |          4.37106e-07 |     0.00046037 |             1.4894e-05 |            0.000152093 |    7.95761e-13 |
-| Min. ($\ell\in[2;3000]$)  |          2.53148e-06 |     0.00291831 |            0.000104709 |             0.00135525 |    7.13821e-12 |
-| Min. ($\ell\in[50;2000]$) |          2.03202e-06 |     0.00261404 |            8.41646e-05 |             0.00127252 |    5.97189e-12 |
-| Min. ($\ell\in[50;1500]$) |          9.88702e-07 |     0.00126386 |            4.27381e-05 |            0.000495158 |    2.64955e-12 |
+**** Plotting everything
+#+BEGIN_SRC ipython :session bcv :results raw drawer :var data1=soxso_pxp :var data2=soxp_soxso
+  ref_std = np.array(data1[0][1:], dtype=np.float)
+  fig, ax = plt.subplots(1, 2, sharex='col', sharey='row', figsize=(10, 6))
+  xlabels = labels[:-1]; xlabels[1] = xlabels[-1]
+  x = np.arange(5)
+  for i in range(1, len(data1)):
+      values = np.array(data1[i][1:], dtype=np.float)
+      ax[0].plot(x, ref_std/values-1, "o")
+  ax[0].set_ylabel(r"$\Delta_\sigma$ (Planck)")
+  ax[0].set_title("SOxSO - PxP")
+  ax[0].set_xticks(x)
+  ax[0].set_xticklabels(xlabels)
+
+  for i in range(0, len(data2)):
+      values = np.array(data2[i][1:], dtype=np.float)
+      ax[1].plot(x, ref_std/values-1, "o", label=data2[i][0])
+
+  ax[1].set_title("SOxP - SOxSO")
+  ax[1].set_xticks(x)
+  ax[1].set_xticklabels(xlabels)
+  ax[1].legend(loc="upper left", bbox_to_anchor=(1,1))
+  plt.subplots_adjust(wspace=0.1)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[274]:
+[[file:./obipy-resources/FFxMxt.png]]
+:end:
