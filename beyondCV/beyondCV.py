@@ -3,7 +3,7 @@
 # Global
 import numpy as np
 
-def simulation(setup, full=False):
+def simulation(setup):
     """
     Simulate CMB power spectrum given a set of cosmological parameters and noise level.
     """
@@ -36,7 +36,15 @@ def simulation(setup, full=False):
         DNl[key] = DNl_array_Planck[freq]*ns[key]
 
     fsky = experiment["fsky"]
-    if full:
+    survey = experiment["survey"]
+    if survey == "P":
+        covmat_PPPP = utils.cov("Planck_all","Planck_all","Planck_all","Planck_all", ns, ls, Dl, DNl, fsky)
+        epsilon_PPPP = np.sqrt(covmat_PPPP)*np.random.randn(len(covmat_PPPP))
+        Dl_obs = Dl + epsilon_PPPP
+        print("chi2(theo)/ndf = ", np.sum((Dl_obs - Dl)**2/covmat_PPPP)/len(ls))
+        return Dl_obs, covmat_PPPP
+
+    else:
         for freq in freq_SO:
             key = "SO_%s" % freq
             ns[key] = 10.
@@ -49,52 +57,73 @@ def simulation(setup, full=False):
         covmat_SPPP = utils.cov("SO_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
         covmat_PPPP = utils.cov("Planck_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
 
-        covmat_master = np.zeros((3,3,len(Dl)))
-        Dl_obs = np.zeros((3,len(Dl)))
+        if survey in ["SOxSO", "SOxP", "PxP"]:
+            covmat_master = np.zeros((3,3,len(Dl)))
+            Dl_obs = np.zeros((3,len(Dl)))
 
-        covmat_master[0,0,:] = covmat_SSSS
-        covmat_master[0,1,:] = covmat_SSSP
-        covmat_master[0,2,:] = covmat_SSPP
-        covmat_master[1,0,:] = covmat_SSSP
-        covmat_master[1,1,:] = covmat_SPSP
-        covmat_master[1,2,:] = covmat_SPPP
-        covmat_master[2,0,:] = covmat_SSPP
-        covmat_master[2,1,:] = covmat_SPPP
-        covmat_master[2,2,:] = covmat_PPPP
+            covmat_master[0,0,:] = covmat_SSSS
+            covmat_master[0,1,:] = covmat_SSSP
+            covmat_master[0,2,:] = covmat_SSPP
+            covmat_master[1,0,:] = covmat_SSSP
+            covmat_master[1,1,:] = covmat_SPSP
+            covmat_master[1,2,:] = covmat_SPPP
+            covmat_master[2,0,:] = covmat_SSPP
+            covmat_master[2,1,:] = covmat_SPPP
+            covmat_master[2,2,:] = covmat_PPPP
+            for i in range(len(Dl)):
+                mat = utils.svd_pow(covmat_master[:,:,i],1./2)
+                Dl_obs[:,i] = Dl[i] + np.dot(mat, np.random.randn(3))
 
-        for i in range(len(Dl)):
-            mat = utils.svd_pow(covmat_master[:,:,i],1./2)
-            Dl_obs[:,i] = Dl[i] + np.dot(mat, np.random.randn(3))
+            Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP = Dl_obs[0,:], Dl_obs[1,:], Dl_obs[2,:]
 
-        Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP = Dl_obs[0,:], Dl_obs[1,:], Dl_obs[2,:]
+            if survey == "SOxSO":
+                Dl_obs, covmat = Dl_obs_SxS, covmat_SSSS
+            elif survey == "SOxP":
+                Dl_obs, covmat = Dl_obs_SxP, covmat_SPSP
+            elif survey == "PxP":
+                Cl_obs, covmat = Dl_obs_PxP, covmat_PPPP
+            print("{} chi2(theo)/ndf = {}".format(survey, np.sum((Dl_obs - Dl)**2/covmat)/len(ls)))
+            return Dl_obs, covmat
+        elif survey in ["SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO", "SOxSO+PxP-2SOxP"] :
+            if survey == "SOxSO-PxP":
+                covmat = C1 = covmat_SSSS + covmat_PPPP - 2*covmat_SSPP
+            elif survey == "SOxP-PxP":
+                covmat = C2 = covmat_SPSP + covmat_PPPP - 2*covmat_SPPP
+            elif survey == "SOxP-SOxSO":
+                covmat = C3 = covmat_SPSP + covmat_SSSS - 2*covmat_SSSP
+            elif survey == "SOxSO+PxP-2SOxP":
+                covmat = C4 = covmat_SSSS + covmat_PPPP + 2*covmat_SSPP - 4*(covmat_SSSP+covmat_SPPP) + 4*covmat_SPSP
 
-        print("SOxSO chi2(theo)/ndf = ", np.sum((Dl_obs_SxS - Dl)**2/covmat_SSSS)/len(ls))
-        print("SOxP chi2(theo)/ndf = ", np.sum((Dl_obs_SxP - Dl)**2/covmat_SPSP)/len(ls))
-        print("PxP chi2(theo)/ndf = ", np.sum((Dl_obs_PxP - Dl)**2/covmat_PPPP)/len(ls))
+            Delta_Dl_obs = np.sqrt(covmat)*np.random.randn(len(ls))
+            print("{} chi2(theo)/ndf = {}".format(survey, np.sum(Delta_Dl_obs**2/covmat)/len(ls)))
+            return Delta_Dl_obs, covmat
+        else:
+            raise ValueError("Unknown survey '{}'!".format(survey))
 
-        return Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP, covmat_SSSS, covmat_SPSP, covmat_PPPP
-    else:
-        covmat_PPPP = utils.cov("Planck_all","Planck_all","Planck_all","Planck_all", ns, ls, Dl, DNl, experiment["fsky"])
-        epsilon_PPPP = np.sqrt(covmat_PPPP)*np.random.randn(len(covmat_PPPP))
-        Dl_obs = Dl + epsilon_PPPP
-        print("chi2(theo)/ndf = ", np.sum((Dl_obs - Dl)**2/covmat_PPPP)/len(ls))
-
-        return Dl_obs, covmat_PPPP
-
-
-def minimization(setup, Dl, cov):
+def sampling(setup, Dl, cov):
     """
-    Minimize CMB power spectra over cosmo. parameters using `cobaya`.
+    Sample CMB power spectra over cosmo. parameters using `cobaya` using either
+    minimization algorithms or MCMC methods.
     """
 
     # Get experiment setup
     experiment = setup["experiment"]
     lmin, lmax = experiment["lmin"], experiment["lmax"]
 
+    # Chi2 for CMB spectra sampling
     def chi2(_theory={"cl": {"tt": lmax}}):
-        from beyondCV import utils
         Dl_theo = _theory.get_cl(ell_factor=True)["tt"][lmin:lmax]
         chi2 = np.sum((Dl - Dl_theo)**2/cov)
+        print("chi2/ndf = ", chi2/len(Dl_theo))
+        return -chi2
+
+    # Chi2 for CMB spectra residuals sampling
+    from beyondCV import utils
+    Dl_Planck = utils.get_theory_cls(setup, lmax)[lmin:lmax]
+    def chi2_residuals(_theory={"cl": {"tt": lmax}}):
+        Dl_theo = _theory.get_cl(ell_factor=True)["tt"][lmin:lmax]
+        Delta_Dl_obs, Delta_Dl_theo = Dl, Dl_theo - Dl_Planck
+        chi2 = np.sum((Delta_Dl_obs - Delta_Dl_theo)**2/cov)
         print("chi2/ndf = ", chi2/len(Dl_theo))
         return -chi2
 
@@ -102,10 +131,29 @@ def minimization(setup, Dl, cov):
     info = setup["cobaya"]
 
     # Add likelihood function
-    info["likelihood"] = {"chi2": chi2}
+    survey = setup.get("experiment").get("survey")
+    if survey in ["P", "SOxSO", "SOxP", "PxP"]:
+        info["likelihood"] = {"chi2": chi2}
+    else:
+        info["likelihood"] = {"chi2": chi2_residuals}
 
     from cobaya.run import run
     return run(info)
+
+def store_results(setup, results):
+    # Store configuration and MINUIT results
+    # Remove function pointer and cobaya results (issue with thread)
+    del setup["cobaya"]["likelihood"]
+    if results.get("OptimizeResult"):
+        del results["OptimizeResult"]["minuit"]
+    if results.get("maximum"):
+        del results["maximum"]
+    output_dir = setup.get("cobaya").get("output")
+    if output_dir:
+        import pickle
+        pickle.dump({"setup": setup, "results": results},
+                    open(output_dir + "_results.pkl", "wb"))
+
 
 # Main function:
 def main():
@@ -114,18 +162,16 @@ def main():
     parser.add_argument("-y", "--yaml-file", help="Yaml file holding sim/minization setup",
                         default=None, required=True)
     parser.add_argument("--survey", help="Set seed of random generator",
-                        choices = ["SO", "SOxP", "P"], default=None, required=False)
-    parser.add_argument("--data-file", help="Data file holding simulated CMB spectrum and its covariance",
-                        default=None, required=False)
+                        choices = ["P", "SOxSO", "SOxP", "PxP",
+                                   "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO", "SOxSO+PxP-2SOxP"],
+                        default=None, required=True)
     parser.add_argument("--seed-simulation", help="Set seed for the simulation random generator",
                         default=None, required=False)
-    parser.add_argument("--seed-minimization", help="Set seed for the minimization random generator",
+    parser.add_argument("--seed-sampling", help="Set seed for the sampling random generator",
                         default=None, required=False)
+    parser.add_argument("--do-mcmc", help="Do MCMC after minimization",
+                        default=False, required=False, action="store_true")
     args = parser.parse_args()
-
-    if args.seed_simulation:
-        print("WARNING: Seed for simulation set to {} value".format(args.seed_simulation))
-        np.random.seed(int(args.seed_simulation))
 
     import yaml
     with open(args.yaml_file, "r") as stream:
@@ -133,46 +179,40 @@ def main():
 
     # Check survey
     survey = args.survey
-    full = (survey != None)
+    setup["experiment"]["survey"] = survey
 
     # Do the simulation
-    if args.data_file:
-        Dl, cov = np.loadtxt(args.data_file)
-    else:
-        sims = simulation(setup, full)
-
-    if not survey:
-        print("INFO: Doing minimization for Planck spectrum only")
-        Dl, cov = sims[0], sims[1]
-    else:
-        print("INFO: Doing minimization for '{}' survey".format(survey))
-        if survey == "SO":
-            Dl, cov = sims[0], sims[3]
-        elif survey == "SOxP":
-            Dl, cov = sims[1], sims[4]
-        elif survey == "P":
-            Dl, cov = sims[2], sims[5]
+    print("INFO: Doing simulation for '{}' survey".format(survey))
+    if args.seed_simulation:
+        print("WARNING: Seed for simulation set to {} value".format(args.seed_simulation))
+        setup["seed_simulation"] = args.seed_simulation
+        np.random.seed(int(args.seed_simulation))
+    Dl, cov = simulation(setup)
 
     # Do the minimization
-    if args.seed_minimization:
-        print("WARNING: Seed for minimization set to {} value".format(args.seed_minimization))
-        np.random.seed(int(args.seed_minimization))
-    updated_info, results = minimization(setup, Dl, cov)
+    if args.seed_sampling:
+        print("WARNING: Seed for sampling set to {} value".format(args.seed_sampling))
+        setup["seed_sampling"] = args.seed_sampling
+        np.random.seed(int(args.seed_sampling))
+    setup["cobaya"]["output"] = "output.d/minimize"
+    updated_info, results = sampling(setup, Dl, cov)
+    store_results(setup, results)
 
-    # Store configuration and MINUIT results
-    # Remove function pointer and cobaya results (issue with thread)
-    del setup["cobaya"]["likelihood"]
-    del results["OptimizeResult"]["minuit"]
-    del results["maximum"]
-    output_dir = setup.get("cobaya").get("output")
-    if output_dir:
-        import pickle
-        if args.seed_simulation:
-            setup["seed_simulation"] =  args.seed_simulation
-        if args.seed_minimization:
-            setup["seed_minimization"] =  args.seed_minimization
-        setup["survey"] = args.survey
-        pickle.dump({"setup": setup, "results": results}, open(output_dir + "_results.pkl", "wb"))
+    # Do the MCMC
+    if args.do_mcmc:
+        # Update cobaya setup
+        x = results.get("OptimizeResult").get("x")
+        covmat = results.get("OptimizeResult").get("hess_inv")
+        params = setup.get("cobaya").get("params")
+        covmat_params = []
+        for k, v in params.items():
+            if isinstance(v, dict) and "prior" in v.keys():
+                covmat_params += [k]
+
+        setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat, "covmat_params": covmat_params}}
+        setup["cobaya"]["output"] = "output.d/mcmc"
+        updated_info, results = sampling(setup, Dl, cov)
+        store_results(setup, results)
 
 # script:
 if __name__ == "__main__":

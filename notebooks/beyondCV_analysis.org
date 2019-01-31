@@ -16,16 +16,17 @@
 ** Cosmo. parameters LaTeX labels
 #+BEGIN_SRC ipython :session bcv :results none
   labels = [r"$\theta_\mathrm{MC}$",
-            r"$A_\mathrm{s}$",
+            r"$\log(10^{10}A_\mathrm{s})$",
             r"$n_\mathrm{s}$",
             r"$\Omega_\mathrm{b}h^2$",
             r"$\Omega_\mathrm{c}h^2$",
-            r"$\chi^2/\mathrm{ndf}$"]
+            r"$A_\mathrm{s}$",
+            r"$\chi^2-\chi^2_\mathrm{min}$"]
 #+END_SRC
 
 ** Get cosmo. parameters from output file
 #+BEGIN_SRC ipython :session bcv :results none
-  def get_params(path, pattern="*.likelihood"):
+  def get_params(path, pattern="*.likelihood", weight=False):
       import os, glob
       all_files = glob.glob(os.path.join(path, pattern))
       # Sort alphabetically
@@ -37,8 +38,10 @@
       # Remove '#' in header
       df.drop(df.columns[[-1,]], axis=1, inplace=True)
       df.columns = header
-      df.insert(value=df.chi2/2/1944, column="chi2_ndf", loc=7)
-      params = np.array(df.iloc[:, 2:8])
+      df.insert(value=df.chi2-np.min(df.chi2), column="delta_chi2", loc=8)
+      params = np.array(df.iloc[:, 2:9])
+      if weight:
+        params = (params, np.array(df.iloc[:, 0]))
       return params
 #+END_SRC
 
@@ -381,3 +384,191 @@ Set PxP deviation as standard for further comparison
 | $\sigma$(SOxSO - PxP)          |           1.8413e-06 |    4.23132e-12 |      0.0021341 |            7.39349e-05 |            0.000775937 |            0.00875221 |
 | $\sigma$(SOxSO - SOxP)         |          9.88702e-07 |    2.64955e-12 |     0.00126386 |            4.27381e-05 |            0.000495158 |            0.00443434 |
 | $\sigma$(SOxSO + PxP - 2 SOxP) |          8.43566e-07 |     3.2112e-12 |     0.00141612 |            4.80235e-05 |            0.000617392 |            0.00245867 |
+* MCMC analysis
+** Check chains
+#+BEGIN_SRC ipython :session bcv :results none
+  def get_chains(path, pattern="*.txt"):
+      import os, glob
+      all_files = glob.glob(os.path.join(path, pattern))
+      # Sort alphabetically
+      all_files.sort()
+      chains = {}
+      for f in all_files:
+          header = pd.read_csv(all_files[0], delim_whitespace=True).columns[1:]
+          df = pd.read_table(f, delim_whitespace=True)
+
+          # Remove '#' in header
+          df.drop(df.columns[[-1,]], axis=1, inplace=True)
+          df.columns = header
+          df.insert(value=df.chi2-np.min(df.chi2), column="delta_chi2", loc=8)
+          key = f.split("/")[-2]
+          # key = key.split("_")[1:2]
+          chains[key] = df
+      return chains
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results none
+  def plot_chains(pattern, burnin=0):
+      chains = get_chains(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/mcmc", pattern=pattern)
+      plt.figure(figsize=(18, 10))
+      for j in range(2,9):
+          plt.subplot(2, 4, j-1)
+          plt.ylabel(labels[j-2])
+          for name, chain in chains.items():
+              n = np.arange(len(chain))
+              plt.plot(n[burnin:], chain.iloc[:,j][burnin:], alpha=0.75)
+      plt.subplots_adjust(hspace=0.25, wspace=0.3)
+      plt.legend([k.replace("_", "\_") for k in chains.keys()], loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+
+*** SOxSO - PxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(pattern="output_SOxSO-PxP*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[59]:
+[[file:./obipy-resources/l9AUH4.png]]
+:end:
+
+*** SOxP - PxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(pattern="output_SOxP-PxP*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[20]:
+[[file:./obipy-resources/oJursp.png]]
+:end:
+
+*** SOxP - SOxSO
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(pattern="output_SOxP-SOxSO*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[21]:
+[[file:./obipy-resources/uzv9nj.png]]
+:end:
+
+** Triangle plot
+
+#+BEGIN_SRC ipython :session bcv :results none
+  def get_samples(path=r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/mcmc", pattern="*.txt"):
+      chains = get_chains(path, pattern)
+      key = next(iter(chains))
+      samples = chains[key].iloc[:, 2:9].values
+      weights = chains[key].iloc[:, 0].values
+      return samples, weights
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  samples = []
+  s, w = get_samples(pattern="output_SOxP-SOxSO*2.converged/mcmc*.txt")
+  samples += [MCSamples(samples=s, names=labels, label="SOxP - SOxSO", weights=w, ignore_rows=0.3)]
+
+  for i in [0, 1, 3, 4]:
+      s, w = get_samples(pattern="output_SOxSO-PxP*{}.converged/mcmc*.txt".format(i))
+      samples += [MCSamples(samples=s, names=labels, label="SOxSO - PxP - {}".format(i), weights=w, ignore_rows=0.3)]
+
+  g = plots.getSubplotPlotter()
+  g.triangle_plot(samples, params=labels[:-1])
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[173]:
+[[file:./obipy-resources/qpkdSO.png]]
+:end:
+
+** Plot variances from MCMC and Hessian
+#+BEGIN_SRC ipython :session bcv :results none
+  import os, glob
+  path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/mcmc"
+  surveys = ["SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  pattern = "output_{}"
+  headers = labels[:-1]
+  headers.pop(1)
+#+END_SRC
+
+*** Compute standard deviation from MCMC
+#+BEGIN_SRC ipython :session bcv :results none
+  table = []
+  lines = []
+  for survey in surveys:
+      files = glob.glob(os.path.join(path, pattern.format(survey) + "*converged"))
+      if not files:
+          continue
+      files.sort()
+      for f in files:
+          samples, weights = get_samples(path=f, pattern="mcmc*.txt")
+          mcsamples = MCSamples(samples=samples, names=labels, weights=weights, ignore_rows=0.3)
+          sigmas = np.sqrt(mcsamples.getVars()).tolist()
+          sigmas.pop(1); sigmas.pop(-1)
+          table += [sigmas]
+          lines += [[f.split("/")[-1]]]
+  table = np.append(lines, table, axis=1)
+  display(HTML(tabulate.tabulate(table, headers=headers, tablefmt="html")))
+#+END_SRC
+
+**** =org= table                                                  :noexport:
+#+BEGIN_SRC ipython :session bcv :results raw output
+  print(tabulate.tabulate(table, headers=headers, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|                               | $\theta_\mathrm{MC}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $A_\mathrm{s}$ |
+|-------------------------------+----------------------+----------------+------------------------+------------------------+----------------|
+| output_SOxSO-PxP_0.converged  |          8.42204e-07 |    0.000987998 |            2.94139e-05 |             0.00032552 |    1.69715e-12 |
+| output_SOxSO-PxP_1.converged  |          8.62444e-07 |     0.00100539 |            3.13933e-05 |            0.000324094 |    1.68814e-12 |
+| output_SOxSO-PxP_3.converged  |          8.60141e-07 |    0.000979011 |            3.14452e-05 |            0.000316173 |    1.66227e-12 |
+| output_SOxSO-PxP_4.converged  |          8.86752e-07 |     0.00095145 |            3.02972e-05 |            0.000314076 |    1.62794e-12 |
+| output_SOxP-SOxSO_2.converged |          4.37106e-07 |     0.00046037 |             1.4894e-05 |            0.000152093 |    7.95761e-13 |
+
+*** From Hessian
+#+BEGIN_SRC ipython :session bcv :results none
+  import pickle
+  def get_hessians(path, pattern="/*.pkl"):
+      import os, glob
+      all_files = glob.glob(os.path.join(path, pattern))
+      all_files.sort()
+      hessians = {}
+      for f in all_files:
+          d = pickle.load(open(f, "rb"))
+          hess = d["results"]["OptimizeResult"]["hess_inv"]
+          hessians[f] = np.sqrt(np.diagonal(hess))
+      return hessians
+#+END_SRC
+
+#+BEGIN_SRC ipython :session bcv :results none
+  table = []
+  lines = []
+  for survey in surveys:
+      files = glob.glob(os.path.join(path, pattern.format(survey) + "*converged"))
+      if not files:
+          continue
+      files.sort()
+      hessians = get_hessians(path=path, pattern=pattern.format(survey) + "*converged*/minimize*.pkl")
+      for k, v in hessians.items():
+          table += [v.tolist()]
+          lines += [[k.split("/")[-2]]]
+  table = np.append(lines, table, axis=1)
+  display(HTML(tabulate.tabulate(table, headers=headers, tablefmt="html")))
+#+END_SRC
+
+**** =org= table                                                  :noexport:
+#+BEGIN_SRC ipython :session bcv :results raw output
+  print(tabulate.tabulate(table, headers=headers, tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+|                               | $\theta_\mathrm{MC}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $A_\mathrm{s}$ |
+|-------------------------------+----------------------+----------------+------------------------+------------------------+----------------|
+| output_SOxSO-PxP_0.converged  |          9.07562e-07 |    0.000462882 |            0.000710933 |            2.45234e-05 |    0.000173289 |
+| output_SOxSO-PxP_1.converged  |          1.00649e-06 |     0.00234359 |            0.000727028 |            0.000117997 |    0.000562889 |
+| output_SOxSO-PxP_3.converged  |          1.04358e-06 |    0.000916334 |             0.00126595 |            3.51463e-05 |    0.000428267 |
+| output_SOxSO-PxP_4.converged  |          1.09634e-06 |    0.000803228 |             0.00118938 |            3.60983e-05 |    0.000384808 |
+| output_SOxP-SOxSO_2.converged |          4.68394e-07 |    0.000332471 |            0.000446926 |            7.51214e-06 |    0.000141894 |

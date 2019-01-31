@@ -74,5 +74,3 @@ cobaya:
   sampler:
     minuit:
       ignore_prior: True
-
-  output: minimize.d/minimize
