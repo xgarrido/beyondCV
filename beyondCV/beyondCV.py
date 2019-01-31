@@ -114,7 +114,6 @@ def sampling(setup, Dl, cov):
     def chi2(_theory={"cl": {"tt": lmax}}):
         Dl_theo = _theory.get_cl(ell_factor=True)["tt"][lmin:lmax]
         chi2 = np.sum((Dl - Dl_theo)**2/cov)
-        print("chi2/ndf = ", chi2/len(Dl_theo))
         return -chi2
 
     # Chi2 for CMB spectra residuals sampling
@@ -124,7 +123,6 @@ def sampling(setup, Dl, cov):
         Dl_theo = _theory.get_cl(ell_factor=True)["tt"][lmin:lmax]
         Delta_Dl_obs, Delta_Dl_theo = Dl, Dl_theo - Dl_Planck
         chi2 = np.sum((Delta_Dl_obs - Delta_Dl_theo)**2/cov)
-        print("chi2/ndf = ", chi2/len(Dl_theo))
         return -chi2
 
     # Get cobaya setup
@@ -196,7 +194,7 @@ def main():
         print("WARNING: Seed for sampling set to {} value".format(args.seed_sampling))
         setup["seed_sampling"] = args.seed_sampling
         np.random.seed(int(args.seed_sampling))
-    setup["cobaya"]["output"] = args.output_base_dir + "/output.d/minimize"
+    setup["cobaya"]["output"] = args.output_base_dir + "/minimize"
     updated_info, results = sampling(setup, Dl, cov)
     store_results(setup, results)
 
@@ -211,7 +209,7 @@ def main():
                 covmat_params += [k]
 
         setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat, "covmat_params": covmat_params}}
-        setup["cobaya"]["output"] = args.output_base_dir + "/output.d/mcmc"
+        setup["cobaya"]["output"] = args.output_base_dir + "/mcmc"
         updated_info, results = sampling(setup, Dl, cov)
         store_results(setup, results)
 
