@@ -171,6 +171,8 @@ def main():
                         default=None, required=False)
     parser.add_argument("--do-mcmc", help="Do MCMC after minimization",
                         default=False, required=False, action="store_true")
+    parser.add_argument("--output-base-dir", help="Set the output base dir where to store results",
+                        default=".", required=False)
     args = parser.parse_args()
 
     import yaml
@@ -194,14 +196,13 @@ def main():
         print("WARNING: Seed for sampling set to {} value".format(args.seed_sampling))
         setup["seed_sampling"] = args.seed_sampling
         np.random.seed(int(args.seed_sampling))
-    setup["cobaya"]["output"] = "output.d/minimize"
+    setup["cobaya"]["output"] = args.output_base_dir + "/output.d/minimize"
     updated_info, results = sampling(setup, Dl, cov)
     store_results(setup, results)
 
     # Do the MCMC
     if args.do_mcmc:
         # Update cobaya setup
-        x = results.get("OptimizeResult").get("x")
         covmat = results.get("OptimizeResult").get("hess_inv")
         params = setup.get("cobaya").get("params")
         covmat_params = []
@@ -210,7 +211,7 @@ def main():
                 covmat_params += [k]
 
         setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat, "covmat_params": covmat_params}}
-        setup["cobaya"]["output"] = "output.d/mcmc"
+        setup["cobaya"]["output"] = args.output_base_dir + "/output.d/mcmc"
         updated_info, results = sampling(setup, Dl, cov)
         store_results(setup, results)
 
