@@ -405,11 +405,10 @@ Set PxP deviation as standard for further comparison
           # key = key.split("_")[1:2]
           chains[key] = df
       return chains
-#+END_SRC
 
-#+BEGIN_SRC ipython :session bcv :results none
-  def plot_chains(pattern, burnin=0):
-      chains = get_chains(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/mcmc", pattern=pattern)
+  ref = [1.04164/100, 3.058, 0.9649, 0.02212, 0.1210, 1]
+  def plot_chains(path=r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/mcmc", pattern=None, burnin=0):
+      chains = get_chains(path=path, pattern=pattern)
       plt.figure(figsize=(18, 10))
       for j in range(2,9):
           plt.subplot(2, 4, j-1)
@@ -417,6 +416,8 @@ Set PxP deviation as standard for further comparison
           for name, chain in chains.items():
               n = np.arange(len(chain))
               plt.plot(n[burnin:], chain.iloc[:,j][burnin:], alpha=0.75)
+          if j != 8:
+              plt.axhline(ref[j-2], color="gray", ls="--", lw=1)
       plt.subplots_adjust(hspace=0.25, wspace=0.3)
       plt.legend([k.replace("_", "\_") for k in chains.keys()], loc="upper left", bbox_to_anchor=(1,1))
 #+END_SRC
@@ -428,8 +429,8 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[59]:
-[[file:./obipy-resources/l9AUH4.png]]
+# Out[279]:
+[[file:./obipy-resources/Fn1hDi.png]]
 :end:
 
 *** SOxP - PxP
@@ -599,7 +600,7 @@ Set PxP deviation as standard for further comparison
 **** Plotting everything
 #+BEGIN_SRC ipython :session bcv :results raw drawer :var data1=soxso_pxp :var data2=soxp_soxso
   ref_std = np.array(data1[0][1:], dtype=np.float)
-  fig, ax = plt.subplots(1, 2, sharex='col', sharey='row', figsize=(10, 6))
+  fig, ax = plt.subplots(1, 2, sharex='col', sharey='row', figsize=(10, 5))
   xlabels = labels[:-1]; xlabels[1] = xlabels[-1]
   x = np.arange(5)
   for i in range(1, len(data1)):
@@ -623,6 +624,136 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[274]:
-[[file:./obipy-resources/FFxMxt.png]]
+# Out[23]:
+[[file:./obipy-resources/f34yVP.png]]
+:end:
+** ALens
+#+BEGIN_SRC ipython :session bcv :results none
+  labels = [r"$\theta_\mathrm{MC}$",
+            r"$\log(10^{10}A_\mathrm{s})$",
+            r"$n_\mathrm{s}$",
+            r"$\Omega_\mathrm{b}h^2$",
+            r"$\Omega_\mathrm{c}h^2$",
+            r"$\mathrm{A}_\mathrm{L}$",
+            r"$\chi^2-\chi^2_\mathrm{min}$"]
+
+  result_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ALens"
+#+END_SRC
+
+*** Check minimization
+#+BEGIN_SRC ipython :session bcv :results raw output
+  import os, glob
+  all_files = glob.glob(os.path.join(result_path, "results*/*.pkl"))
+  all_files.sort()
+  table = []
+  for f in all_files:
+    import pickle
+    msg = pickle.load(open(f, "rb"))["results"]["OptimizeResult"]["message"]
+    table += [[f.split("/")[-2], msg]]
+  print(tabulate.tabulate(table, headers=["Directory", "Status"], tablefmt="orgtbl"))
+#+END_SRC
+
+#+RESULTS:
+| Directory                | Status                                                        |
+|--------------------------+---------------------------------------------------------------|
+| results_666_0_PxP        | Optimization terminated successfully.                         |
+| results_666_0_SOxP-PxP   | Optimization failed. Estimated distance to minimum too large. |
+| results_666_0_SOxP-SOxSO | Optimization failed. Estimated distance to minimum too large. |
+| results_666_0_SOxSO-PxP  | Optimization terminated successfully.                         |
+| results_666_1_PxP        | Optimization terminated successfully.                         |
+| results_666_1_SOxP-PxP   | Optimization terminated successfully.                         |
+| results_666_1_SOxP-SOxSO | Optimization failed. Estimated distance to minimum too large. |
+| results_666_1_SOxSO-PxP  | Optimization terminated successfully.                         |
+| results_666_2_PxP        | Optimization failed. Estimated distance to minimum too large. |
+| results_666_2_SOxP-PxP   | Optimization failed. Estimated distance to minimum too large. |
+| results_666_2_SOxP-SOxSO | Optimization failed. Estimated distance to minimum too large. |
+| results_666_2_SOxSO-PxP  | Optimization terminated successfully.                         |
+| results_666_3_PxP        | Optimization terminated successfully.                         |
+| results_666_3_SOxP-PxP   | Optimization terminated successfully.                         |
+| results_666_3_SOxP-SOxSO | Optimization terminated successfully.                         |
+| results_666_3_SOxSO-PxP  | Optimization terminated successfully.                         |
+| results_666_4_PxP        | Optimization failed. Estimated distance to minimum too large. |
+| results_666_4_SOxP-PxP   | Optimization terminated successfully.                         |
+| results_666_4_SOxP-SOxSO | Optimization failed. Estimated distance to minimum too large. |
+| results_666_4_SOxSO-PxP  | Optimization terminated successfully.                         |
+
+*** Check chains
+**** PxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(path=result_path, pattern="results*_PxP*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[25]:
+[[file:./obipy-resources/S93v14.png]]
+:end:
+
+**** SOxSO - PxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(path=result_path, pattern="results_*SOxSO-PxP*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[27]:
+[[file:./obipy-resources/b21StY.png]]
+:end:
+
+**** SOxP - PxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(path=result_path, pattern="results_*SOxP-PxP*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[28]:
+[[file:./obipy-resources/Xnxcs0.png]]
+:end:
+
+**** SOxP - SOxSO
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(path=result_path, pattern="results_*SOxP-SOxSO*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[29]:
+[[file:./obipy-resources/Dwa4Vu.png]]
+:end:
+*** Triangle plot
+#+BEGIN_SRC ipython :session bcv :results none
+  def plot_samples(path=result_path, name=None, burnin=0.3):
+      samples = []
+      for i in range(5):
+          pattern = "results*_{}_{}*/mcmc*.txt".format(i, name)
+          all_files = glob.glob(os.path.join(result_path, pattern))
+          if not all_files:
+              continue
+          s, w = get_samples(result_path, pattern)
+          samples += [MCSamples(samples=s, names=labels, label="{} - MCMC {}".format(name, i), weights=w, ignore_rows=burnin)]
+
+      g = plots.getSubplotPlotter()
+      g.triangle_plot(samples, params=labels[:-1])
+#+END_SRC
+
+**** PxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_samples(name="PxP")
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[37]:
+[[file:./obipy-resources/c0n3GN.png]]
+:end:
+**** SOxSO - PxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_samples(name="SOxSO-PxP")
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[38]:
+[[file:./obipy-resources/TGgDOh.png]]
 :end:
