@@ -169,6 +169,8 @@ def main():
                         default=None, required=False)
     parser.add_argument("--do-mcmc", help="Do MCMC after minimization",
                         default=False, required=False, action="store_true")
+    parser.add_argument("--use-covmat", help="Use covariance matrix from minimization",
+                        default=False, required=False, action="store_true")
     parser.add_argument("--output-base-dir", help="Set the output base dir where to store results",
                         default=".", required=False)
     args = parser.parse_args()
@@ -201,14 +203,18 @@ def main():
     # Do the MCMC
     if args.do_mcmc:
         # Update cobaya setup
-        covmat = results.get("OptimizeResult").get("hess_inv")
         params = setup.get("cobaya").get("params")
-        covmat_params = []
-        for k, v in params.items():
-            if isinstance(v, dict) and "prior" in v.keys():
-                covmat_params += [k]
+        if args.use_covmat:
+            covmat = results.get("OptimizeResult").get("hess_inv")
+            covmat_params = [k for k, v in params.items() if isinstance(v, dict) and "prior" in v.keys()]
+            setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat, "covmat_params": covmat_params}}
+        else:
+            for k, v in params.items():
+                if isinstance(v, dict) and "prior" in v.keys():
+                    proposal = (v.get("prior").get("max") - v.get("prior").get("min"))/2
+                    params[k]["proposal"] = proposal
+                    setup["cobaya"]["sampler"] = {"mcmc": None}
 
-        setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat, "covmat_params": covmat_params}}
         setup["cobaya"]["output"] = args.output_base_dir + "/mcmc"
         updated_info, results = sampling(setup, Dl, cov)
         store_results(setup, results)
