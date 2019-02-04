@@ -37,68 +37,60 @@ def simulation(setup):
 
     fsky = experiment["fsky"]
     survey = experiment["survey"]
-    if survey == "P":
-        covmat_PPPP = utils.cov("Planck_all","Planck_all","Planck_all","Planck_all", ns, ls, Dl, DNl, fsky)
-        epsilon_PPPP = np.sqrt(covmat_PPPP)*np.random.randn(len(covmat_PPPP))
-        Dl_obs = Dl + epsilon_PPPP
-        print("chi2(theo)/ndf = ", np.sum((Dl_obs - Dl)**2/covmat_PPPP)/len(ls))
-        return Dl_obs, covmat_PPPP
+    for freq in freq_SO:
+        key = "SO_%s" % freq
+        ns[key] = 10.
+        DNl[key] = DNl_array_SO[freq]*ns[key]
 
+    covmat_SSSS = utils.cov("SO_all", "SO_all", "SO_all", "SO_all", ns, ls, Dl, DNl, fsky)
+    covmat_SSSP = utils.cov("SO_all", "SO_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+    covmat_SSPP = utils.cov("SO_all", "SO_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+    covmat_SPSP = utils.cov("SO_all", "Planck_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+    covmat_SPPP = utils.cov("SO_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+    covmat_PPPP = utils.cov("Planck_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+
+    if survey in ["SOxSO", "SOxP", "PxP"]:
+        covmat_master = np.zeros((3,3,len(Dl)))
+        Dl_obs = np.zeros((3,len(Dl)))
+
+        covmat_master[0,0,:] = covmat_SSSS
+        covmat_master[0,1,:] = covmat_SSSP
+        covmat_master[0,2,:] = covmat_SSPP
+        covmat_master[1,0,:] = covmat_SSSP
+        covmat_master[1,1,:] = covmat_SPSP
+        covmat_master[1,2,:] = covmat_SPPP
+        covmat_master[2,0,:] = covmat_SSPP
+        covmat_master[2,1,:] = covmat_SPPP
+        covmat_master[2,2,:] = covmat_PPPP
+        for i in range(len(Dl)):
+            mat = utils.svd_pow(covmat_master[:,:,i],1./2)
+            Dl_obs[:,i] = Dl[i] + np.dot(mat, np.random.randn(3))
+
+        Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP = Dl_obs[0,:], Dl_obs[1,:], Dl_obs[2,:]
+
+        if survey == "SOxSO":
+            Dl_obs, covmat = Dl_obs_SxS, covmat_SSSS
+        elif survey == "SOxP":
+            Dl_obs, covmat = Dl_obs_SxP, covmat_SPSP
+        elif survey == "PxP":
+            Dl_obs, covmat = Dl_obs_PxP, covmat_PPPP
+        print("{} chi2(theo)/ndf = {}".format(survey, np.sum((Dl_obs - Dl)**2/covmat)/len(ls)))
+        return Dl_obs, covmat
+    elif survey in ["SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO", "SOxSO+PxP-2SOxP"] :
+        if survey == "SOxSO-PxP":
+            covmat = C1 = covmat_SSSS + covmat_PPPP - 2*covmat_SSPP
+        elif survey == "SOxP-PxP":
+            covmat = C2 = covmat_SPSP + covmat_PPPP - 2*covmat_SPPP
+        elif survey == "SOxP-SOxSO":
+            covmat = C3 = covmat_SPSP + covmat_SSSS - 2*covmat_SSSP
+        elif survey == "SOxSO+PxP-2SOxP":
+            covmat = C4 = covmat_SSSS + covmat_PPPP + 2*covmat_SSPP - 4*(covmat_SSSP+covmat_SPPP) + 4*covmat_SPSP
+
+        Delta_Dl_obs = np.sqrt(covmat)*np.random.randn(len(ls))
+        print("{} chi2(theo)/ndf = {}".format(survey, np.sum(Delta_Dl_obs**2/covmat)/len(ls)))
+        return Delta_Dl_obs, covmat
     else:
-        for freq in freq_SO:
-            key = "SO_%s" % freq
-            ns[key] = 10.
-            DNl[key] = DNl_array_SO[freq]*ns[key]
-
-        covmat_SSSS = utils.cov("SO_all", "SO_all", "SO_all", "SO_all", ns, ls, Dl, DNl, fsky)
-        covmat_SSSP = utils.cov("SO_all", "SO_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-        covmat_SSPP = utils.cov("SO_all", "SO_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-        covmat_SPSP = utils.cov("SO_all", "Planck_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-        covmat_SPPP = utils.cov("SO_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-        covmat_PPPP = utils.cov("Planck_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-
-        if survey in ["SOxSO", "SOxP", "PxP"]:
-            covmat_master = np.zeros((3,3,len(Dl)))
-            Dl_obs = np.zeros((3,len(Dl)))
-
-            covmat_master[0,0,:] = covmat_SSSS
-            covmat_master[0,1,:] = covmat_SSSP
-            covmat_master[0,2,:] = covmat_SSPP
-            covmat_master[1,0,:] = covmat_SSSP
-            covmat_master[1,1,:] = covmat_SPSP
-            covmat_master[1,2,:] = covmat_SPPP
-            covmat_master[2,0,:] = covmat_SSPP
-            covmat_master[2,1,:] = covmat_SPPP
-            covmat_master[2,2,:] = covmat_PPPP
-            for i in range(len(Dl)):
-                mat = utils.svd_pow(covmat_master[:,:,i],1./2)
-                Dl_obs[:,i] = Dl[i] + np.dot(mat, np.random.randn(3))
-
-            Dl_obs_SxS, Dl_obs_SxP, Dl_obs_PxP = Dl_obs[0,:], Dl_obs[1,:], Dl_obs[2,:]
-
-            if survey == "SOxSO":
-                Dl_obs, covmat = Dl_obs_SxS, covmat_SSSS
-            elif survey == "SOxP":
-                Dl_obs, covmat = Dl_obs_SxP, covmat_SPSP
-            elif survey == "PxP":
-                Cl_obs, covmat = Dl_obs_PxP, covmat_PPPP
-            print("{} chi2(theo)/ndf = {}".format(survey, np.sum((Dl_obs - Dl)**2/covmat)/len(ls)))
-            return Dl_obs, covmat
-        elif survey in ["SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO", "SOxSO+PxP-2SOxP"] :
-            if survey == "SOxSO-PxP":
-                covmat = C1 = covmat_SSSS + covmat_PPPP - 2*covmat_SSPP
-            elif survey == "SOxP-PxP":
-                covmat = C2 = covmat_SPSP + covmat_PPPP - 2*covmat_SPPP
-            elif survey == "SOxP-SOxSO":
-                covmat = C3 = covmat_SPSP + covmat_SSSS - 2*covmat_SSSP
-            elif survey == "SOxSO+PxP-2SOxP":
-                covmat = C4 = covmat_SSSS + covmat_PPPP + 2*covmat_SSPP - 4*(covmat_SSSP+covmat_SPPP) + 4*covmat_SPSP
-
-            Delta_Dl_obs = np.sqrt(covmat)*np.random.randn(len(ls))
-            print("{} chi2(theo)/ndf = {}".format(survey, np.sum(Delta_Dl_obs**2/covmat)/len(ls)))
-            return Delta_Dl_obs, covmat
-        else:
-            raise ValueError("Unknown survey '{}'!".format(survey))
+        raise ValueError("Unknown survey '{}'!".format(survey))
 
 def sampling(setup, Dl, cov):
     """
@@ -191,6 +183,7 @@ def main():
         np.random.seed(int(args.seed_simulation))
     Dl, cov = simulation(setup)
 
+    print(Dl.shape, cov.shape)
     # Do the minimization
     if args.seed_sampling:
         print("WARNING: Seed for sampling set to {} value".format(args.seed_sampling))
@@ -199,6 +192,7 @@ def main():
     setup["cobaya"]["output"] = args.output_base_dir + "/minimize"
     updated_info, results = sampling(setup, Dl, cov)
     store_results(setup, results)
+
 
     # Do the MCMC
     if args.do_mcmc:
