@@ -152,8 +152,7 @@ def main():
     parser.add_argument("-y", "--yaml-file", help="Yaml file holding sim/minization setup",
                         default=None, required=True)
     parser.add_argument("--survey", help="Set seed of random generator",
-                        choices = ["P", "SOxSO", "SOxP", "PxP",
-                                   "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO", "SOxSO+PxP-2SOxP"],
+                        choices = ["SOxSO", "SOxP", "PxP", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO", "SOxSO+PxP-2SOxP"],
                         default=None, required=True)
     parser.add_argument("--seed-simulation", help="Set seed for the simulation random generator",
                         default=None, required=False)
