@@ -181,50 +181,43 @@ def svd_pow(A, exponent):
     return np.einsum("...ab,...b,...cb->...ac",V,E**exponent,V)
 
 
-def fisher_planck(setup):
+def fisher(setup, covmat, covmat_params):
     experiment = setup["experiment"]
     lmin, lmax = experiment["lmin"], experiment["lmax"]
-    ls = np.arange(lmin, lmax)
 
     from beyondCV import utils
     from copy import deepcopy
 
-    params=["cosmomc_theta", "As", "omch2", "ns", "ombh2"]
-    epsilon=0.01
-    deriv={}
+    params = covmat_params
+    epsilon = 0.01
+    deriv = {}
     for p in params:
-        value=setup["simulation"]["cosmo. parameters"][p]
-        setup_mod=deepcopy(setup)
-        setup_mod["simulation"]["cosmo. parameters"][p]= (1-epsilon)*value
+        setup_mod = deepcopy(setup)
+        parname = p if p != "logA" else "As"
+        value = setup["simulation"]["cosmo. parameters"][parname]
+        setup_mod["simulation"]["cosmo. parameters"][parname] = (1-epsilon)*value
         Dltt_minus = utils.get_theory_cls(setup_mod, lmax)
         Dltt_minus = Dltt_minus[lmin:lmax]
-        setup_mod=deepcopy(setup)
-        setup_mod["simulation"]["cosmo. parameters"][p]= (1+epsilon)*value
+        setup_mod["simulation"]["cosmo. parameters"][parname] = (1+epsilon)*value
         Dltt_plus = utils.get_theory_cls(setup_mod, lmax)
         Dltt_plus = Dltt_plus[lmin:lmax]
-        deriv[p]= (Dltt_plus-Dltt_minus)/(2*epsilon*value)
+        d = (Dltt_plus-Dltt_minus)/(2*epsilon*value)
+        deriv[p] = d if p != "logA" else d*value
 
     Dltt = utils.get_theory_cls(setup, lmax)
     Dltt = Dltt[lmin:lmax]
 
-    freq_Planck, DNl_array_Planck = utils.get_noise(experiment, "Planck")
-    freq_Planck = list(freq_Planck)
-    freq_Planck.append('all')
-
-    ns = {}
-    DNl = {}
-    for freq in freq_Planck:
-        key = "Planck_%s" % freq
-        ns[key]=2.
-        DNl[key]=DNl_array_Planck[freq]*ns[key]
-
-    covmat_PPPP = utils.cov("Planck_all","Planck_all","Planck_all","Planck_all", ns, ls, Dltt, DNl, experiment["fsky"])
-
-    nparam=len(params)
-    fisher=np.zeros((nparam,nparam))
+    nparam = len(params)
+    fisher = np.zeros((nparam,nparam))
     for count1, p1 in enumerate(params):
         for count2, p2 in enumerate(params):
-            fisher[count1,count2]=np.sum(covmat_PPPP**-1*deriv[p1]*deriv[p2])
-    cov=np.linalg.inv(fisher)
+            fisher[count1,count2] = np.sum(covmat**-1*deriv[p1]*deriv[p2])
+    cov = np.linalg.inv(fisher)
+    print("eigenvalues = ", np.linalg.eigvals(cov))
     for count, p in enumerate(params):
-        print(p,setup_mod["simulation"]["cosmo. parameters"][p],np.sqrt(cov[count,count]))
+        if p == "logA":
+            value = np.log(1e10*setup_mod["simulation"]["cosmo. parameters"]["As"])
+        else:
+            value = setup_mod["simulation"]["cosmo. parameters"][p]
+        print(p, value, np.sqrt(cov[count,count]))
+    return cov
