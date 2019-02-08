@@ -10,6 +10,7 @@
   from getdist import plots, MCSamples
   from IPython.display import HTML, display
   import tabulate
+  import glob
 #+END_SRC
 
 * Plot cosmological parameters distribution
@@ -50,8 +51,8 @@
 
 ** Show input values of cosmo. parameters
 #+BEGIN_SRC ipython :session bcv :results none
-  ref = [1.04164/100, np.exp(3.058)/1e10, 0.9649, 0.02212, 0.1210]
   def show_ref(g):
+      ref = [1.04164/100, np.exp(3.058)/1e10, 0.9649, 0.02212, 0.1210]
       for i, r in enumerate(ref):
           kwargs = dict(color="gray", ls="--", lw=1)
           for ax in g.subplots[:,i]:
@@ -75,8 +76,8 @@
 
 #+RESULTS:
 :results:
-# Out[839]:
-[[file:./obipy-resources/pPCTme.png]]
+# Out[1100]:
+[[file:./obipy-resources/Qnku27.png]]
 :end:
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
@@ -89,8 +90,8 @@
 
 #+RESULTS:
 :results:
-# Out[840]:
-[[file:./obipy-resources/KYn348.png]]
+# Out[1101]:
+[[file:./obipy-resources/O10Mbg.png]]
 :end:
 
 #+BEGIN_SRC ipython :session bcv :results output
@@ -144,16 +145,29 @@
 
 #+RESULTS:
 :results:
-# Out[844]:
+# Out[1085]:
 : ((978, 6), (978, 6), (978, 6))
 :end:
-
+*** Triangle plot
 #+BEGIN_SRC ipython :session bcv :results none
   samples_SO   = MCSamples(samples=params_SO, names=labels, label="SOxSO")
   samples_SOxP = MCSamples(samples=params_SOxP, names=labels, label="SOxP")
   samples_P    = MCSamples(samples=params_P, names=labels, label="PxP")
 #+END_SRC
 
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  g = plots.getSubplotPlotter()
+  g.triangle_plot([samples_SO, samples_SOxP, samples_P], params=labels[:-1])
+  show_ref(g)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[1092]:
+[[file:./obipy-resources/xEOpts.png]]
+:end:
+
+*** Variances of parameters
 #+BEGIN_SRC ipython :session bcv :results none
   lines = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
            [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
@@ -175,44 +189,45 @@
 Set PxP deviation as standard for further comparison
 #+BEGIN_SRC ipython :session bcv :results none
   ref_std = std_P
+  print(ref_std)
 #+END_SRC
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   x = np.arange(5)
-  plt.plot(x, (ref_std/std_SO-1)[:-1], "o", label="SO")
-  plt.plot(x, (ref_std/std_SOxP-1)[:-1], "o", label="SOxP")
-  plt.plot(x, (ref_std/std_SOmP-1)[:-1], "o", label="SO-P")
-  plt.plot(x, (ref_std/std_SOmSOxP-1)[:-1], "o", label="SO-SOxP")
-  plt.plot(x, (ref_std/std_SOpPm2SOxP-1)[:-1], "o", label="SO+P-2SOxP")
+  plt.plot(x, (ref_std/std_SO)[:-1], "o", label="SOxSO")
+  plt.plot(x, (ref_std/std_SOxP)[:-1], "o", label="SOxP")
+  plt.plot(x, (ref_std/std_SOmP)[:-1], "o", label="SOxSO-PxP")
+  plt.plot(x, (ref_std/std_SOmSOxP)[:-1], "o", label="SOxSO-SOxP")
+  plt.plot(x, (ref_std/std_SOpPm2SOxP)[:-1], "o", label="SOxSO+PxP-2SOxP")
   plt.xticks(x, labels[:-1])
-  plt.ylabel(r"$\Delta_\sigma$ (Planck)")
+  plt.ylabel(r"$\Delta_\sigma$ (/Planck)")
   plt.legend(loc="upper left", title=r"$\ell\in[2; 3000]$", bbox_to_anchor=(1,1))
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[848]:
-: <matplotlib.legend.Legend at 0x7fcbe7e93fd0>
-[[file:./obipy-resources/AntLVj.png]]
+# Out[1098]:
+: <matplotlib.legend.Legend at 0x7fcbe6e15cf8>
+[[file:./obipy-resources/byLexB.png]]
 :end:
 
-*** Org table                                                    :noexport:
+**** Org table                                                  :noexport:
 #+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
 
 #+RESULTS:
-|                                | $\theta_\mathrm{MC}$ | $\log(10^{10}A_\mathrm{s})$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2-\chi^2_\mathrm{min}$ | $A_\mathrm{s}$ |
-|--------------------------------+----------------------+-----------------------------+----------------+------------------------+------------------------+------------------------------+----------------|
-| $\mu$(SOxSO)                   |            0.0104163 |                  2.1288e-09 |       0.964831 |              0.0221165 |               0.121037 |                     -39.8779 |        491.874 |
-| $\mu$(SOxP)                    |            0.0104162 |                 2.12874e-09 |       0.964837 |              0.0221241 |               0.121029 |                     -39.8779 |        482.606 |
-| $\mu$(PxP)                     |            0.0104161 |                 2.12891e-09 |       0.964766 |              0.0221283 |               0.121065 |                     -39.8779 |        395.489 |
-| $\sigma$(SOxSO)                |          3.30158e-06 |                 8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |                  7.10543e-15 |        155.132 |
-| $\sigma$(SOxP)                 |          4.13856e-06 |                 1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |                  7.10543e-15 |        155.961 |
-| $\sigma$(PxP)                  |          4.88563e-06 |                 1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |                  7.10543e-15 |        149.562 |
-| $\sigma$(SOxSO - PxP)          |          3.76192e-06 |                 9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |                            0 |        148.291 |
-| $\sigma$(SOxSO - SOxP)         |          2.53148e-06 |                 7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |                            0 |        125.786 |
-| $\sigma$(SOxSO + PxP - 2 SOxP) |          3.28542e-06 |                 9.16644e-12 |     0.00375188 |            0.000160698 |             0.00174672 |                            0 |        209.039 |
+|                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2-\chi^2_\mathrm{min}$ |
+|--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+------------------------------|
+| $\mu$(SOxSO)                   |            0.0104163 |     2.1288e-09 |       0.964831 |              0.0221165 |               0.121037 |                      491.874 |
+| $\mu$(SOxP)                    |            0.0104162 |    2.12874e-09 |       0.964837 |              0.0221241 |               0.121029 |                      482.606 |
+| $\mu$(PxP)                     |            0.0104161 |    2.12891e-09 |       0.964766 |              0.0221283 |               0.121065 |                      395.489 |
+| $\sigma$(SOxSO)                |          3.30158e-06 |    8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |                      155.132 |
+| $\sigma$(SOxP)                 |          4.13856e-06 |    1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |                      155.961 |
+| $\sigma$(PxP)                  |          4.88563e-06 |    1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |                      149.562 |
+| $\sigma$(SOxSO - PxP)          |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |                      148.291 |
+| $\sigma$(SOxSO - SOxP)         |          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |                      125.786 |
+| $\sigma$(SOxSO + PxP - 2 SOxP) |          3.28542e-06 |    9.16644e-12 |     0.00375188 |            0.000160698 |             0.00174672 |                      209.039 |
 
 ** \ell \in [50; 2000]
 #+BEGIN_SRC ipython :session bcv :results raw drawer
@@ -224,10 +239,10 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[232]:
+# Out[877]:
 : ((971, 6), (971, 6), (971, 6))
 :end:
-
+*** Triangle plot
 #+BEGIN_SRC ipython :session bcv :results none
   samples_SO   = MCSamples(samples=params_SO, names=labels, label="SOxSO")
   samples_SOxP = MCSamples(samples=params_SOxP, names=labels, label="SOxP")
@@ -242,10 +257,11 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[178]:
-[[file:./obipy-resources/j0LRmj.png]]
+# Out[881]:
+[[file:./obipy-resources/ARl6ns.png]]
 :end:
 
+*** Variances of parameters
 #+BEGIN_SRC ipython :session bcv :results none
   lines = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
            [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
@@ -278,12 +294,12 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[234]:
-: <matplotlib.legend.Legend at 0x7f1eda6bdcf8>
-[[file:./obipy-resources/ESNtlB.png]]
+# Out[885]:
+: <matplotlib.legend.Legend at 0x7fcbec53e7b8>
+[[file:./obipy-resources/NM7IJU.png]]
 :end:
 
-*** Org table                                                    :noexport:
+**** Org table                                                  :noexport:
 #+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
@@ -311,10 +327,10 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[237]:
+# Out[886]:
 : ((1001, 6), (1001, 6), (1001, 6))
 :end:
-
+*** Triangle plot
 #+BEGIN_SRC ipython :session bcv :results none
   samples_SO   = MCSamples(samples=params_SO, names=labels, label="SOxSO")
   samples_SOxP = MCSamples(samples=params_SOxP, names=labels, label="SOxP")
@@ -329,10 +345,11 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[206]:
-[[file:./obipy-resources/O4TXAu.png]]
+# Out[888]:
+[[file:./obipy-resources/QXWKEY.png]]
 :end:
 
+*** Variances of parameters
 #+BEGIN_SRC ipython :session bcv :results none
   lines = [[r"$\mu$(SOxSO)"], [r"$\mu$(SOxP)"], [r"$\mu$(PxP)"],
            [r"$\sigma$(SOxSO)"], [r"$\sigma$(SOxP)"], [r"$\sigma$(PxP)"],
@@ -365,30 +382,160 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[239]:
-: <matplotlib.legend.Legend at 0x7f1eda228b00>
-[[file:./obipy-resources/RyOF5b.png]]
+# Out[890]:
+: <matplotlib.legend.Legend at 0x7fcbe69a05c0>
+[[file:./obipy-resources/qVqYAE.png]]
 :end:
 
-*** Org table                                                    :noexport:
+**** Org table                                                  :noexport:
 #+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
 
 #+RESULTS:
-|                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
-|--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
-| $\mu$(SOxSO)                   |            0.0104164 |    2.12863e-09 |       0.965051 |              0.0221351 |               0.120983 |              0.742085 |
-| $\mu$(SOxP)                    |            0.0104164 |    2.12875e-09 |        0.96499 |              0.0221342 |               0.121003 |              0.742216 |
-| $\mu$(PxP)                     |            0.0104164 |    2.12881e-09 |       0.964953 |              0.0221335 |               0.121012 |              0.742351 |
-| $\sigma$(SOxSO)                |           6.3324e-06 |    1.53135e-11 |     0.00712775 |            0.000258049 |             0.00282965 |             0.0280147 |
-| $\sigma$(SOxP)                 |          6.34447e-06 |    1.52396e-11 |     0.00707853 |            0.000258622 |             0.00282214 |             0.0280142 |
-| $\sigma$(PxP)                  |           6.5121e-06 |     1.5435e-11 |     0.00720973 |            0.000265144 |             0.00285634 |             0.0279847 |
-| $\sigma$(SOxSO - PxP)          |           1.8413e-06 |    4.23132e-12 |      0.0021341 |            7.39349e-05 |            0.000775937 |            0.00875221 |
-| $\sigma$(SOxSO - SOxP)         |          9.88702e-07 |    2.64955e-12 |     0.00126386 |            4.27381e-05 |            0.000495158 |            0.00443434 |
-| $\sigma$(SOxSO + PxP - 2 SOxP) |          8.43566e-07 |     3.2112e-12 |     0.00141612 |            4.80235e-05 |            0.000617392 |            0.00245867 |
+|                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2-\chi^2_\mathrm{min}$ |
+|--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+------------------------------|
+| $\mu$(SOxSO)                   |            0.0104164 |    2.12863e-09 |       0.965054 |              0.0221352 |               0.120982 |                      438.048 |
+| $\mu$(SOxP)                    |            0.0104164 |    2.12874e-09 |       0.964994 |              0.0221343 |               0.121002 |                      432.316 |
+| $\mu$(PxP)                     |            0.0104164 |    2.12879e-09 |       0.964959 |              0.0221337 |                0.12101 |                      419.556 |
+| $\sigma$(SOxSO)                |          6.33122e-06 |    1.52994e-11 |     0.00712238 |             0.00025782 |             0.00282717 |                      109.152 |
+| $\sigma$(SOxP)                 |          6.34361e-06 |    1.52274e-11 |     0.00707437 |            0.000258408 |             0.00281993 |                      109.211 |
+| $\sigma$(PxP)                  |          6.51112e-06 |    1.54247e-11 |     0.00720613 |            0.000264971 |             0.00285429 |                      109.122 |
+| $\sigma$(SOxSO - PxP)          |          1.83962e-06 |    4.23374e-12 |     0.00213334 |            7.39648e-05 |            0.000775876 |                      34.0135 |
+| $\sigma$(SOxSO - SOxP)         |          9.87789e-07 |    2.64961e-12 |     0.00126339 |            4.27526e-05 |            0.000494945 |                       17.241 |
+| $\sigma$(SOxSO + PxP - 2 SOxP) |          8.42738e-07 |    3.20894e-12 |     0.00141523 |            4.80156e-05 |            0.000616931 |                      9.56108 |
+
 * MCMC analysis
-** Check chains
+** Understanding MCMC /à la/ cobaya
+We run several MCMC for PxP survey (\ell 2; 3000) and *use the covariance matrix from Fisher*
+calculation as input of =cobaya= MCMC algorithm. We check how the input covariance matrix changes the
+MCMC convergence. Basically, we do the following tests:
+- Covariance matrix/2
+- Covariance matrix
+- Covariance matrix*2
+- Covariance matrix*4
+
+#+BEGIN_SRC ipython :session bcv :results none
+  labels = [r"$\theta_\mathrm{MC}$",
+            r"$\log(10^{10}A_\mathrm{s})$",
+            r"$n_\mathrm{s}$",
+            r"$\Omega_\mathrm{b}h^2$",
+            r"$\Omega_\mathrm{c}h^2$",
+            r"$\chi^2-\chi^2_\mathrm{min}$",
+            r"$A_\mathrm{s}$"]
+
+  result_path=r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/fisher"
+#+END_SRC
+
+*** Covariance matrix divide by 2
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/0.5/*_PxP_*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[58]:
+[[file:./obipy-resources/KsgZNm.png]]
+:end:
+
+*** Initial covariance matrix
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/1/*_PxP_*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[57]:
+[[file:./obipy-resources/mxPD8G.png]]
+:end:
+
+*** Covariance matrix multiply by 2
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/2/*_PxP_*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[56]:
+[[file:./obipy-resources/xfa5zM.png]]
+:end:
+
+*** Covariance matrix multiply by 4
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/4/*_PxP_*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[9]:
+[[file:./obipy-resources/VCVPbu.png]]
+:end:
+
+*** Remove =proposal_scale=
+By default there is a =proposal_scale= parameter for =cobaya= MCMC which is set to 2.4. Here we set it
+to 1 and check the results
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/no_proposal_scale/*_PxP_*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[55]:
+[[file:./obipy-resources/PUylZd.png]]
+:end:
+
+*** Fix Χ²
+Fix likelihood definition by adding a 1/2 factor
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/fix_chi2/*_PxP_*/mcmc*.txt", burnin=0)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[71]:
+[[file:./obipy-resources/l91d5L.png]]
+:end:
+
+*** Plotting variances /vs./ Fisher results
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  fisher = np.array([5.126550726714351e-06, 0.006039315179940597, 0.005589724100405183, 0.00020382255228959761, 0.002334040314343254])
+  def get_variance_ratio(scale_factor):
+      mcmc = get_mcmc_variances(result_path + "/{}/*_PxP_*/mcmc*.txt".format(scale_factor))
+      mcmc = np.mean(np.array(mcmc[:, 1:], dtype=np.float), axis=0)
+      return fisher/mcmc
+
+  def get_variance_from_covmat(scale_factor):
+      all_files = glob.glob(result_path + "/{}/*/mcmc.covmat".format(scale_factor))
+      variances = np.zeros((len(all_files), 5))
+      for i, f in enumerate(all_files):
+          cov = np.loadtxt(f)
+          variances[i, :] = np.sqrt(np.diag(cov))
+      return fisher/np.mean(variances, axis=1)
+
+  x = np.arange(len(labels)-2)
+  for scale in [0.5, 1, 2, 4]:
+    plt.plot(x, get_variance_ratio(scale), "o", label="scale x{}".format(scale))
+    # y = get_variance_from_covmat(scale)
+    # print(y)
+  plt.plot(x, get_variance_ratio("no_proposal_scale"), "o", label="no proposal scale".format(scale))
+  plt.plot(x, get_variance_ratio("fix_chi2"), "o", label="fix chi2".format(scale))
+  # plt.plot(x, get_variance_from_covmat("fich_chi2"), "s", label="fix chi2 (from covmat)")
+
+  plt.axhline(1, color="gray", ls="--", lw=1)
+  plt.ylabel(r"$\sigma$(Fisher)/$\sigma$(MCMC)")
+  plt.xticks(x, labels[:-2])
+  plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[70]:
+: <matplotlib.legend.Legend at 0x7f22e5f68400>
+[[file:./obipy-resources/8ywhB4.png]]
+:end:
+
+** \Lambda CDM
+*** Check chains
 #+BEGIN_SRC ipython :session bcv :results none
   labels = [r"$\theta_\mathrm{MC}$",
             r"$\log(10^{10}A_\mathrm{s})$",
@@ -417,6 +564,7 @@ Set PxP deviation as standard for further comparison
           df.columns = header
           # Compute delta chi2
           delta_chi2 = df.chi2-np.min(df.chi2)
+
           # Remove useless columns
           df.drop(columns=["minuslogpost", "minuslogprior", "minuslogprior__0", "chi2", "chi2__chi2"], inplace=True)
           # Insert Delta chi2 before As (which is derived and never plot)
@@ -445,29 +593,29 @@ Set PxP deviation as standard for further comparison
       plt.subplots_adjust(hspace=0.25, wspace=0.3)
       plt.legend([k.replace("_", "\_") for k in chains.keys()], loc="upper left", bbox_to_anchor=(1,1))
 #+END_SRC
-*** PxP
+**** PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   plot_chains(result_path + "/*_PxP_*/mcmc*.txt", burnin=0)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[861]:
-[[file:./obipy-resources/cwMcR3.png]]
+# Out[1038]:
+[[file:./obipy-resources/EiiqVS.png]]
 :end:
 
-*** SOxSO - PxP
+**** SOxSO - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   plot_chains(result_path + "/*_SOxSO-PxP_*/mcmc*.txt", burnin=0)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[619]:
-[[file:./obipy-resources/o7jekI.png]]
+# Out[949]:
+[[file:./obipy-resources/VMO7nV.png]]
 :end:
 
-*** SOxP - PxP
+**** SOxP - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   plot_chains(result_path + "/*_SOxP-PxP*/mcmc*.txt", burnin=0)
 #+END_SRC
@@ -478,7 +626,7 @@ Set PxP deviation as standard for further comparison
 [[file:./obipy-resources/2VFaUD.png]]
 :end:
 
-*** SOxP - SOxSO
+**** SOxP - SOxSO
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   plot_chains(result_path + "/*_SOxP-SOxSO*/mcmc*.txt", burnin=0)
 #+END_SRC
@@ -489,7 +637,7 @@ Set PxP deviation as standard for further comparison
 [[file:./obipy-resources/omO1vo.png]]
 :end:
 
-** Triangle plot
+*** Triangle plot
 
 #+BEGIN_SRC ipython :session bcv :results none
   def get_samples(path):
@@ -508,7 +656,7 @@ Set PxP deviation as standard for further comparison
   for i in [0, 1, 3, 4]:
       s, w = get_samples(result_path + "/*_SOxSO-PxP*{}/mcmc*.txt".format(i))
       samples += [MCSamples(samples=s, names=labels, label="SOxSO - PxP - {}".format(i), weights=w, ignore_rows=0.3)]
-  for i in [1, 3, 4]:
+  for i in range(5):
       s, w = get_samples(result_path + "/*_PxP*{}/mcmc*.txt".format(i))
       samples += [MCSamples(samples=s, names=labels, label="PxP - {}".format(i), weights=w, ignore_rows=0.3)]
 
@@ -518,12 +666,12 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[864]:
-[[file:./obipy-resources/nxpGGM.png]]
+# Out[1043]:
+[[file:./obipy-resources/k6523h.png]]
 :end:
 
-** Plot variances from MCMC and Hessian
-*** Compute standard deviation from MCMC
+*** Plot variances from MCMC and Hessian
+**** Compute standard deviation from MCMC
 #+BEGIN_SRC ipython :session bcv :results none
   def get_mcmc_variances(path, burnin=0.3, keep_As=False):
       table = []
@@ -549,7 +697,7 @@ Set PxP deviation as standard for further comparison
   display(HTML(tabulate.tabulate(table, headers=labels[:-2], tablefmt="html")))
 #+END_SRC
 
-**** =org= table                                                  :noexport:
+***** =org= table                                              :noexport:
 #+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels[:-2], tablefmt="orgtbl"))
 #+END_SRC
@@ -557,14 +705,14 @@ Set PxP deviation as standard for further comparison
 #+RESULTS:
 |                        | $\theta_\mathrm{MC}$ | $\log(10^{10}A_\mathrm{s})$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
 |------------------------+----------------------+-----------------------------+----------------+------------------------+------------------------|
-| results_PxP_667_0      |          1.85527e-06 |                  0.00184892 |     0.00205551 |            3.87612e-05 |            0.000658339 |
-| results_PxP_667_1      |          2.14041e-06 |                  0.00241274 |     0.00223439 |            8.52515e-05 |            0.000934487 |
-| results_PxP_667_2      |          1.83791e-06 |                  0.00205935 |      0.0018854 |            1.89126e-06 |            0.000804492 |
-| results_PxP_667_3      |          2.16143e-06 |                  0.00242676 |     0.00230244 |            8.14451e-05 |            0.000941026 |
-| results_PxP_667_4      |          2.02879e-06 |                  0.00236513 |     0.00220365 |            8.45122e-05 |            0.000922949 |
+| results_PxP_667_0      |          3.72909e-06 |                  0.00417638 |     0.00389413 |            0.000145411 |             0.00159717 |
+| results_PxP_667_1      |          3.57642e-06 |                  0.00422906 |     0.00396238 |            0.000143895 |             0.00163655 |
+| results_PxP_667_2      |          3.55353e-06 |                  0.00429424 |     0.00394772 |            0.000144947 |             0.00163285 |
+| results_PxP_667_3      |          3.52397e-06 |                  0.00421843 |     0.00391569 |            0.000135441 |             0.00160636 |
+| results_PxP_667_4      |          3.53659e-06 |                  0.00420714 |     0.00398142 |            0.000146265 |             0.00162171 |
 | results_SOxP-PxP_667_0 |          4.31904e-07 |                 0.000403276 |    0.000511504 |            1.58353e-05 |            0.000165415 |
-| results_SOxP-PxP_667_2 |          4.85848e-07 |                 0.000440405 |    0.000581479 |             1.7588e-05 |            0.000181686 |
-| results_SOxP-PxP_667_3 |          6.77174e-06 |                  0.00308742 |     0.00293597 |             2.6595e-09 |            0.000218175 |
+| results_SOxP-PxP_667_2 |          4.56856e-07 |                 0.000391472 |    0.000511549 |            1.60144e-05 |            0.000161055 |
+| results_SOxP-PxP_667_3 |          3.88202e-06 |                  0.00337982 |      0.0027732 |            5.77201e-09 |             0.00019168 |
 | results_SOxP-PxP_667_4 |           1.0527e-06 |                  0.00133597 |     0.00160094 |            5.11123e-05 |            0.000555544 |
 | results_SOxP-SOxSO_0   |          7.72041e-07 |                 0.000878449 |     0.00115087 |            4.20484e-05 |            0.000372655 |
 | results_SOxP-SOxSO_1   |          1.25393e-05 |                  0.00451828 |     0.00715077 |            0.000256968 |             0.00223155 |
@@ -574,13 +722,34 @@ Set PxP deviation as standard for further comparison
 | results_SOxSO-PxP_3    |          8.60141e-07 |                 0.000779817 |    0.000979011 |            3.14452e-05 |            0.000316173 |
 | results_SOxSO-PxP_4    |          8.86752e-07 |                  0.00076371 |     0.00095145 |            3.02972e-05 |            0.000314076 |
 
-**** Compare MCMC to minimization for PxP
+**** Compare MCMC to minimization and Fisher
+| PxP                             | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
+|---------------------------------+----------------------+----------------+----------------+------------------------+------------------------|
+| $\sigma$ (Minimization)         |          4.99937e-06 |    1.24047e-11 |     0.00544548 |            0.000206822 |              0.0022281 |
+| $\sigma$ (Minimization 2;3000)  |          4.88563e-06 |    1.22407e-11 |     0.00529792 |            0.000204028 |              0.0022389 |
+| $\sigma$ (Fisher)               |          5.12655e-06 |    1.28546e-11 |     0.00558972 |            0.000203823 |             0.00233404 |
+| $\sigma$ (MCMC)                 |          3.60082e-06 |    0.89984e-11 |     0.00394778 |            0.000143322 |             0.00162962 |
+| $\Delta\sigma$ (min-Fisher) [%] |             -2.48081 |        -3.5002 |       -2.58047 |                1.47141 |                -4.5391 |
+|---------------------------------+----------------------+----------------+----------------+------------------------+------------------------|
+| SOxSO                           | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
+|---------------------------------+----------------------+----------------+----------------+------------------------+------------------------|
+| $\sigma$ (Minimization)         |          3.30158e-06 |    8.82142e-12 |     0.00403527 |            0.000113061 |             0.00147556 |
+| $\sigma$ (Fisher)               |          3.31809e-06 |    9.02724e-12 |     0.00410550 |            0.000112680 |             0.00148535 |
+|---------------------------------+----------------------+----------------+----------------+------------------------+------------------------|
+| SOxP                            | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
+|---------------------------------+----------------------+----------------+----------------+------------------------+------------------------|
+| $\sigma$ (Minimization)         |          4.13856e-06 |    1.10042e-11 |      0.0048009 |            0.000153239 |             0.00196259 |
+| $\sigma$ (Fisher)               |          4.20292e-06 |    1.13107e-11 |      0.0049306 |            0.000153280 |             0.00199297 |
+
+
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  mcmc = get_mcmc_variances(result_path + "/results*_PxP_*[1,3,4]/mcmc*.txt", keep_As=True)
-  mcmc = np.mean(np.array(mcmc[:, 1:], dtype=np.float), axis=0)
-  mcmc[1] = mcmc[-1] # Use As for comparison
-  plt.plot(ref_std[:-1]/mcmc[:-1], "o")
-  plt.ylabel(r"$\Delta\sigma$ (/MCMC)")
+  for i in np.arange(0, 0.7, 0.1):
+      mcmc = get_mcmc_variances(result_path + "/results*_PxP_*[0-4]/mcmc*.txt", keep_As=True, burnin=i)
+      mcmc = np.mean(np.array(mcmc[:, 1:], dtype=np.float), axis=0)
+      mcmc[1] = mcmc[-1] # Use As for comparison
+      plt.plot(ref_std[:-1]/mcmc[:-1], "o", label="burnin {:.1f}".format(i))
+
+  plt.ylabel(r"$\sigma$(Fisher)/$\sigma$(MCMC)$")
   xlabels = [r"$\theta_\mathrm{MC}$",
             r"$A_\mathrm{s}$",
             r"$n_\mathrm{s}$",
@@ -592,12 +761,12 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[855]:
-: <matplotlib.legend.Legend at 0x7fcbec671d68>
-[[file:./obipy-resources/E07XwW.png]]
+# Out[1084]:
+: <matplotlib.legend.Legend at 0x7fcbe5fb1198>
+[[file:./obipy-resources/7t1JvP.png]]
 :end:
 
-*** From Hessian
+**** From Hessian
 #+BEGIN_SRC ipython :session bcv :results none
   import pickle
   def get_hessians(f):
@@ -626,40 +795,47 @@ Set PxP deviation as standard for further comparison
   display(HTML(tabulate.tabulate(table, headers=labels[:-2], tablefmt="html")))
 #+END_SRC
 
-**** =org= table                                                  :noexport:
+***** =org= table                                              :noexport:
 #+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels[:-2], tablefmt="orgtbl"))
 #+END_SRC
 
 #+RESULTS:
-|                     | $\theta_\mathrm{MC}$ | $\log(10^{10}A_\mathrm{s})$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
-|---------------------+----------------------+-----------------------------+----------------+------------------------+------------------------|
-| output_SOxP-PxP_3   |          1.27285e-06 |                  0.00151253 |    0.000335953 |            9.12838e-05 |            2.48647e-05 |
-| output_SOxP-PxP_4   |          5.11765e-07 |                 0.000347024 |    0.000504766 |            1.63855e-05 |            0.000153263 |
-| output_SOxP-SOxSO_0 |          5.22319e-07 |                 0.000321383 |    0.000467955 |            7.77545e-06 |            0.000144856 |
-| output_SOxP-SOxSO_1 |           1.1058e-07 |                  0.00158029 |    0.000242349 |            9.15489e-05 |             2.5819e-05 |
-| output_SOxP-SOxSO_2 |          4.68394e-07 |                 0.000332471 |    0.000446926 |            7.51214e-06 |            0.000141894 |
-| output_SOxSO-PxP_0  |          9.07562e-07 |                 0.000462882 |    0.000710933 |            2.45234e-05 |            0.000173289 |
-| output_SOxSO-PxP_1  |          1.00649e-06 |                  0.00234359 |    0.000727028 |            0.000117997 |            0.000562889 |
-| output_SOxSO-PxP_3  |          1.04358e-06 |                 0.000916334 |     0.00126595 |            3.51463e-05 |            0.000428267 |
-| output_SOxSO-PxP_4  |          1.09634e-06 |                 0.000803228 |     0.00118938 |            3.60983e-05 |            0.000384808 |
-
-*** Summary
-**** SOxSO - PxP
+|                     |   $\theta_\mathrm{MC}$ | $\log(10^{10}A_\mathrm{s})$ |        $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
+|---------------------+------------------------+-----------------------------+-----------------------+------------------------+------------------------|
+| output_SOxP-PxP_3   |            1.27285e-06 |                  0.00151253 |           0.000335953 |            9.12838e-05 |            2.48647e-05 |
+| output_SOxP-PxP_4   |            5.11765e-07 |                 0.000347024 |           0.000504766 |            1.63855e-05 |            0.000153263 |
+| output_SOxP-SOxSO_0 |            5.22319e-07 |                 0.000321383 |           0.000467955 |            7.77545e-06 |            0.000144856 |
+| output_SOxP-SOxSO_1 |             1.1058e-07 |                  0.00158029 |           0.000242349 |            9.15489e-05 |             2.5819e-05 |
+| output_SOxP-SOxSO_2 |            4.68394e-07 |                 0.000332471 |           0.000446926 |            7.51214e-06 |            0.000141894 |
+| output_SOxSO-PxP_0  |            9.07562e-07 |                 0.000462882 |           0.000710933 |            2.45234e-05 |            0.000173289 |
+| output_SOxSO-PxP_1  |            1.00649e-06 |                  0.00234359 |           0.000727028 |            0.000117997 |            0.000562889 |
+| output_SOxSO-PxP_3  |            1.04358e-06 |                 0.000916334 |            0.00126595 |            3.51463e-05 |            0.000428267 |
+| output_SOxSO-PxP_4  |            1.09634e-06 |                 0.000803228 |            0.00118938 |            3.60983e-05 |            0.000384808 |
+**** Summary
+***** SOxSO - PxP
 #+TBLNAME: soxso_pxp
-|                            | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
-|----------------------------+----------------------+----------------+----------------+------------------------+------------------------|
-| MCMC PxP                   |       2.11021100e-06 | 5.09354804e-12 | 2.24682572e-03 |         8.37362917e-05 |        9.32820498e-04  |
-| MCMC (n° 0)                |          8.42204e-07 |    1.69715e-12 |    0.000987998 |            2.94139e-05 |             0.00032552 |
-| Min. ($\ell\in[2;3000]$)   |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |
-| Min. ($\ell\in[50;2000]$)  |          2.99731e-06 |    7.16794e-12 |     0.00314853 |            0.000122405 |             0.00133315 |
-| Min. ($\ell\in[50;1500]$)  |           1.8413e-06 |    4.23132e-12 |      0.0021341 |            7.39349e-05 |            0.000775937 |
+|                           | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
+|---------------------------+----------------------+----------------+----------------+------------------------+------------------------|
+| MCMC PxP                  |       3.59242536e-06 | 8.90430283e-12 | 3.91641588e-03 |         1.41296535e-04 |        1.60043263e-03  |
+| MCMC (n° 0)               |          8.42204e-07 |    1.69715e-12 |    0.000987998 |            2.94139e-05 |             0.00032552 |
+| Min. ($\ell\in[2;3000]$)  |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |
+| Min. ($\ell\in[50;2000]$) |          2.99731e-06 |    7.16794e-12 |     0.00314853 |            0.000122405 |             0.00133315 |
+| Min. ($\ell\in[50;1500]$) |           1.8413e-06 |    4.23132e-12 |      0.0021341 |            7.39349e-05 |            0.000775937 |
 # | Planck (full $\ell$ range) |          4.88562e-06 |    1.22406e-11 |  0.00529791672 |            2.04027e-04 |          0.00223889971 |
 # | MCMC (n° 1)                |          8.62444e-07 |    1.68814e-12 |     0.00100539 |            3.13933e-05 |            0.000324094 |
 # | MCMC (n° 3)                |          8.60141e-07 |    1.66227e-12 |    0.000979011 |            3.14452e-05 |            0.000316173 |
 # | MCMC (n° 4)                |          8.86752e-07 |    1.62794e-12 |     0.00095145 |            3.02972e-05 |            0.000314076 |
+***** SOxP - PxP
+#+TBLNAME: soxp_pxp
+|             | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
+|-------------+----------------------+----------------+----------------+------------------------+------------------------|
+| MCMC (n° 0) |          4.31904e-07 |    0.000403276 |    0.000511504 |            1.58353e-05 |            0.000165415 |
+# | MCMC (n° 2) |          4.56856e-07 |    0.000391472 |    0.000511549 |            1.60144e-05 |            0.000161055 |
+# | MCMC (n° 3) |          3.88202e-06 |     0.00337982 |      0.0027732 |            5.77201e-09 |             0.00019168 |
+# | MCMC (n° 4) |           1.0527e-06 |     0.00133597 |     0.00160094 |            5.11123e-05 |            0.000555544 |
 
-**** SOxP - SOxSO
+***** SOxP - SOxSO
 #+TBLNAME: soxp_soxso
 |                           | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
 |---------------------------+----------------------+----------------+----------------+------------------------+------------------------|
@@ -668,10 +844,10 @@ Set PxP deviation as standard for further comparison
 | Min. ($\ell\in[50;2000]$) |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |
 | Min. ($\ell\in[50;1500]$) |          9.88702e-07 |    2.64955e-12 |     0.00126386 |            4.27381e-05 |            0.000495158 |
 
-**** Plotting everything
-#+BEGIN_SRC ipython :session bcv :results raw drawer :var data1=soxso_pxp :var data2=soxp_soxso
-  ref_std = np.array(data1[0][1:], dtype=np.float)
-  fig, ax = plt.subplots(1, 2, sharex='col', sharey='row', figsize=(10, 5))
+***** Plotting everything
+#+BEGIN_SRC ipython :session bcv :results raw drawer :var data1=soxso_pxp :var data2=soxp_soxso :var data3=soxp_pxp
+  ref_PP = np.array(data1[0][1:], dtype=np.float)
+  fig, ax = plt.subplots(1, 3, sharex='col', sharey='row', figsize=(10, 5))
   xlabels = [r"$\theta_\mathrm{MC}$",
             r"$A_\mathrm{s}$",
             r"$n_\mathrm{s}$",
@@ -680,7 +856,7 @@ Set PxP deviation as standard for further comparison
   x = np.arange(5)
   for i in range(1, len(data1)):
       values = np.array(data1[i][1:], dtype=np.float)
-      ax[0].plot(x, ref_std/values-1, "o")
+      ax[0].plot(x, ref_PP/values, "o")
   ax[0].set_ylabel(r"$\Delta\sigma$ (/Planck)")
   ax[0].set_title("SOxSO - PxP")
   ax[0].set_xticks(x)
@@ -688,21 +864,31 @@ Set PxP deviation as standard for further comparison
 
   for i in range(0, len(data2)):
       values = np.array(data2[i][1:], dtype=np.float)
-      ax[1].plot(x, ref_std/values-1, "o", label=data2[i][0])
+      ax[1].plot(x, ref_PP/values, "o", label=data2[i][0])
 
   ax[1].set_title("SOxP - SOxSO")
   ax[1].set_xticks(x)
   ax[1].set_xticklabels(xlabels)
   ax[1].legend(loc="upper left", bbox_to_anchor=(1,1))
+
+  for i in range(0, len(data3)):
+      values = np.array(data3[i][1:], dtype=np.float)
+      ax[2].plot(x, ref_PP/values, "o", label=data2[i][0])
+
+  # ax[2].set_title("SOxP - PxP")
+  # ax[2].set_xticks(x)
+  # ax[2].set_xticklabels(xlabels)
+  # ax[2].legend(loc="upper left", bbox_to_anchor=(1,1))
+
   plt.subplots_adjust(wspace=0.1)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[858]:
-[[file:./obipy-resources/MVkgGZ.png]]
+# Out[1078]:
+[[file:./obipy-resources/eOB82R.png]]
 :end:
-** ALens
+** \Lambda CDM + ALens
 #+BEGIN_SRC ipython :session bcv :results none
   labels = [r"$\theta_\mathrm{MC}$",
             r"$\log(10^{10}A_\mathrm{s})$",
@@ -770,8 +956,8 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[601]:
-[[file:./obipy-resources/SpgEMY.png]]
+# Out[1012]:
+[[file:./obipy-resources/ZesjxE.png]]
 :end:
 
 **** SOxSO - PxP
@@ -811,6 +997,7 @@ Get Hessians from minimizations
   def plot_samples(path, burnin=0.3):
       samples = []
       colors = []
+      line_args = []
       all_files = glob.glob(path)
       all_files.sort()
       for f in all_files:
@@ -819,11 +1006,11 @@ Get Hessians from minimizations
           i = survey.split("_")[-1]
           survey = survey.split("_")[1]
           samples += [MCSamples(samples=s, names=labels, label="{} - MCMC {}".format(survey, i), weights=w, ignore_rows=burnin)]
-          colors += [i]
+          colors += ["-C{}".format(i)]
 
       g = plots.getSubplotPlotter()
-      g.settings.lineM = ["-C{}".format(i) for i in colors]
-      g.triangle_plot(samples, params=labels[:-2])
+      g.settings.lineM = colors
+      g.triangle_plot(samples, params=labels[:-2])#, line_args=len(all_files)*[{"lw": 1}])
 #+END_SRC
 
 **** PxP
@@ -833,8 +1020,8 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[605]:
-[[file:./obipy-resources/9cttv2.png]]
+# Out[1024]:
+[[file:./obipy-resources/8XywgR.png]]
 :end:
 **** SOxSO - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
@@ -843,8 +1030,8 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[606]:
-[[file:./obipy-resources/3p0jS6.png]]
+# Out[937]:
+[[file:./obipy-resources/qyml5n.png]]
 :end:
 **** SOxP - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
@@ -853,8 +1040,8 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[607]:
-[[file:./obipy-resources/Byrh8P.png]]
+# Out[938]:
+[[file:./obipy-resources/sdJfUB.png]]
 :end:
 
 **** SOxP - SOxSO
@@ -864,8 +1051,8 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[608]:
-[[file:./obipy-resources/WHgBZC.png]]
+# Out[939]:
+[[file:./obipy-resources/7kMBK0.png]]
 :end:
 *** Compute standard deviation from MCMC
 #+BEGIN_SRC ipython :session bcv :results none
