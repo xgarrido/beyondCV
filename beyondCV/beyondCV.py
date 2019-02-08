@@ -171,8 +171,6 @@ def main():
                         default=False, required=False, action="store_true")
     parser.add_argument("--use-fisher-covmat", help="Use covariance matrix from Fisher calculation",
                         default=False, required=False, action="store_true")
-    parser.add_argument("--covmat-scale", help="Scale the input covariance matrix for MCMC",
-                        default=1.0, required=False, type=float)
     parser.add_argument("--output-base-dir", help="Set the output base dir where to store results",
                         default=".", required=False)
     args = parser.parse_args()
@@ -213,12 +211,12 @@ def main():
         print("Sampling over", covmat_params, "parameters")
         if args.use_covmat:
             covmat = results.get("OptimizeResult").get("hess_inv")
-            setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat*args.covmat_scale,
+            setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat,
                                                    "covmat_params": covmat_params}}
         elif args.use_fisher_covmat:
             from beyondCV import utils
             covmat = utils.fisher(setup, cov, covmat_params)
-            setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat*args.covmat_scale,
+            setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat,
                                                    "covmat_params": covmat_params}}
         else:
             for p in covmat_params:
