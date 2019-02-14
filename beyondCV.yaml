@@ -1,13 +1,13 @@
 # Simulation parameters
 simulation:
   cosmo. parameters:
-    #H0=67.5 # use theta instead
-    cosmomc_theta : 0.0104164
-    As            : 2.128494467439464e-09
-    ombh2         : 0.02212
-    omch2         : 0.1210
+    # Planck 2018
+    H0            : 67.36 # km/s
+    logA          : 3.044
+    ombh2         : 0.02237
+    omch2         : 0.1200
     ns            : 0.9649
-    tau           : &tau 0.058
+    tau           : &tau 0.0544
     mnu           : &mnu 0.06
     omk           : &omk 0
     r             : &r 0
@@ -41,12 +41,11 @@ cobaya:
     mnu   : *mnu
     omk   : *omk
     r     : *r
-    ALens : *ALens
     # Sampled
-    cosmomc_theta:
+    H0:
       prior:
-        min: 0.0103
-        max: 0.0105
+        min: 60
+        max: 75
     logA:
       prior:
         min: 3.0
@@ -66,6 +65,10 @@ cobaya:
       prior:
         min: 0.09
         max: 0.15
+    ALens:
+      prior:
+        min: 0.5
+        max: 1.5
 
   theory:
     camb:
