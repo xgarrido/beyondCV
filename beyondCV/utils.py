@@ -63,6 +63,11 @@ def get_theory_cls(setup, lmax):
     # Get simulation parameters
     simu = setup["simulation"]
     cosmo = simu["cosmo. parameters"]
+    # CAMB use As
+    if "logA" in cosmo:
+        cosmo["As"] = 1e-10*np.exp(cosmo["logA"])
+        del cosmo["logA"]
+
     # Get cobaya setup
     from copy import deepcopy
     info = deepcopy(setup["cobaya"])
