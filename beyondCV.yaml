@@ -73,7 +73,3 @@ cobaya:
   theory:
     camb:
       stop_at_error: False
-
-  sampler:
-    minuit:
-      ignore_prior: True
