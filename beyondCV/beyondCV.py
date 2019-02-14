@@ -91,12 +91,11 @@ def simulation(setup):
         raise ValueError("Unknown survey '{}'!".format(survey))
 
     # Store simulation informations
-    simu["auxiliaries"] = {"Dl": Dl_obs, "covmat": covmat, "chi2ndf_theory": chi2_theo}
+    simu.update({"Dl": Dl_obs, "covmat": covmat, "chi2ndf_theory": chi2_theo})
 
     print("{} chi2(theo)/ndf = {}".format(survey, chi2_theo))
-    return Dl_obs, covmat
 
-def sampling(setup, Dl, cov):
+def sampling(setup):
     """
     Sample CMB power spectra over cosmo. parameters using `cobaya` using either
     minimization algorithms or MCMC methods.
@@ -105,6 +104,9 @@ def sampling(setup, Dl, cov):
     # Get experiment setup
     experiment = setup["experiment"]
     lmin, lmax = experiment["lmin"], experiment["lmax"]
+
+    simu = setup["simulation"]
+    Dl, cov = simu["Dl"], simu["covmat"]
 
     # Chi2 for CMB spectra sampling
     def chi2(_theory={"cl": {"tt": lmax}}):
@@ -125,7 +127,7 @@ def sampling(setup, Dl, cov):
     info = setup["cobaya"]
 
     # Add likelihood function
-    survey = setup.get("experiment").get("survey")
+    survey = experiment.get("survey")
     if survey in ["SOxSO", "SOxP", "PxP"]:
         info["likelihood"] = {"chi2": chi2}
     else:
@@ -134,20 +136,19 @@ def sampling(setup, Dl, cov):
     from cobaya.run import run
     return run(info)
 
-def store_results(setup, results=None):
+def store(setup):
     # Store configuration and MINUIT results
     # Remove function pointer and cobaya results (issue with thread)
-    del setup["cobaya"]["likelihood"]
-    if results:
+    if setup.get("cobaya").get("likelihood"):
+        del setup["cobaya"]["likelihood"]
+    if setup.get("results"):
+        results = setup.get("results")
         if results.get("OptimizeResult"):
             del results["OptimizeResult"]["minuit"]
         if results.get("maximum"):
             del results["maximum"]
-    output_dir = setup.get("cobaya").get("output")
-    if output_dir:
-        import pickle
-        pickle.dump({"setup": setup, "results": results},
-                    open(output_dir + "_results.pkl", "wb"))
+    import pickle
+    pickle.dump({"setup": setup}, open("setup.pkl", "wb"))
 
 
 # Main function:
@@ -167,7 +168,7 @@ def main():
                         default=False, required=False, action="store_true")
     parser.add_argument("--do-mcmc", help="Use MCMC sampler",
                         default=False, required=False, action="store_true")
-    parser.add_argument("--use-covmat", help="Use covariance matrix from minimization",
+    parser.add_argument("--use-hessian-covmat", help="Use covariance matrix from minimization",
                         default=False, required=False, action="store_true")
     parser.add_argument("--use-fisher-covmat", help="Use covariance matrix from Fisher calculation",
                         default=False, required=False, action="store_true")
@@ -189,7 +190,7 @@ def main():
         print("WARNING: Seed for simulation set to {} value".format(args.seed_simulation))
         setup["seed_simulation"] = args.seed_simulation
         np.random.seed(int(args.seed_simulation))
-    Dl, cov = simulation(setup)
+    simulation(setup)
 
     # Seeding the sampler
     if args.seed_sampling:
@@ -199,9 +200,10 @@ def main():
 
     # Do the minimization
     if args.do_minimization:
+        setup["cobaya"]["sampler"] = {"minuit": {"ignore_prior": True, "force": True, "ntry_max": 10}}
         setup["cobaya"]["output"] = args.output_base_dir + "/minimize"
-        updated_info, results = sampling(setup, Dl, cov)
-        store_results(setup, results)
+        updated_info, results = sampling(setup)
+        setup.update({"results": results})
 
     # Do the MCMC
     if args.do_mcmc:
@@ -209,25 +211,26 @@ def main():
         params = setup.get("cobaya").get("params")
         covmat_params = [k for k, v in params.items() if isinstance(v, dict) and "prior" in v.keys()]
         print("Sampling over", covmat_params, "parameters")
-        if args.use_covmat:
+        if args.use_hessian_covmat:
             covmat = results.get("OptimizeResult").get("hess_inv")
-            setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat,
-                                                   "covmat_params": covmat_params}}
+            mcmc_dict = {"mcmc": {"covmat": covmat, "covmat_params": covmat_params}}
         elif args.use_fisher_covmat:
             from beyondCV import utils
-            covmat = utils.fisher(setup, cov, covmat_params)
-            setup["cobaya"]["sampler"] = {"mcmc": {"covmat": covmat,
-                                                   "covmat_params": covmat_params}}
+            covmat = utils.fisher(setup, covmat_params)
+            mcmc_dict = {"mcmc": {"covmat": covmat, "covmat_params": covmat_params}}
         else:
             for p in covmat_params:
                 v = params.get(p)
                 proposal = (v.get("prior").get("max") - v.get("prior").get("min"))/2
                 params[p]["proposal"] = proposal
-            setup["cobaya"]["sampler"] = {"mcmc": None}
+            mcmc_dict = {"mcmc": None}
 
+        setup["cobaya"]["sampler"] = mcmc_dict
         setup["cobaya"]["output"] = args.output_base_dir + "/mcmc"
-        updated_info, results = sampling(setup, Dl, cov)
-        store_results(setup)
+        updated_info, results = sampling(setup)
+
+    # Store configuration & results
+    store(setup)
 
 # script:
 if __name__ == "__main__":

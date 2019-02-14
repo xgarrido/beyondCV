@@ -189,7 +189,7 @@ def svd_pow(A, exponent):
     return np.einsum("...ab,...b,...cb->...ac",V,E**exponent,V)
 
 
-def fisher(setup, covmat, covmat_params):
+def fisher(setup, covmat_params):
     experiment = setup["experiment"]
     lmin, lmax = experiment["lmin"], experiment["lmax"]
 
@@ -197,6 +197,7 @@ def fisher(setup, covmat, covmat_params):
     from copy import deepcopy
 
     params = covmat_params
+    covmat = setup.get("simulation").get("covmat")
     epsilon = 0.01
     deriv = {}
     for p in params:
