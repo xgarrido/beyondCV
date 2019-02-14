@@ -193,7 +193,6 @@ def fisher(setup, covmat_params):
     experiment = setup["experiment"]
     lmin, lmax = experiment["lmin"], experiment["lmax"]
 
-    from beyondCV import utils
     from copy import deepcopy
 
     params = covmat_params
@@ -205,15 +204,15 @@ def fisher(setup, covmat_params):
         parname = p if p != "logA" else "As"
         value = setup["simulation"]["cosmo. parameters"][parname]
         setup_mod["simulation"]["cosmo. parameters"][parname] = (1-epsilon)*value
-        Dltt_minus = utils.get_theory_cls(setup_mod, lmax)
+        Dltt_minus = get_theory_cls(setup_mod, lmax)
         Dltt_minus = Dltt_minus[lmin:lmax]
         setup_mod["simulation"]["cosmo. parameters"][parname] = (1+epsilon)*value
-        Dltt_plus = utils.get_theory_cls(setup_mod, lmax)
+        Dltt_plus = get_theory_cls(setup_mod, lmax)
         Dltt_plus = Dltt_plus[lmin:lmax]
         d = (Dltt_plus-Dltt_minus)/(2*epsilon*value)
         deriv[p] = d if p != "logA" else d*value
 
-    Dltt = utils.get_theory_cls(setup, lmax)
+    Dltt = get_theory_cls(setup, lmax)
     Dltt = Dltt[lmin:lmax]
 
     nparam = len(params)
