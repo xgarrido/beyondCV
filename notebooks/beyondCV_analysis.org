@@ -216,6 +216,8 @@ Set PxP deviation as standard for further comparison
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
 
+
+#+TBLNAME: min_l_2_3000
 #+RESULTS:
 |                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2-\chi^2_\mathrm{min}$ |
 |--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+------------------------------|
@@ -239,7 +241,7 @@ Set PxP deviation as standard for further comparison
 
 #+RESULTS:
 :results:
-# Out[877]:
+# Out[3]:
 : ((971, 6), (971, 6), (971, 6))
 :end:
 *** Triangle plot
@@ -304,6 +306,7 @@ Set PxP deviation as standard for further comparison
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
 
+#+TBLNAME: min_l_50_2000
 #+RESULTS:
 |                               | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2/\mathrm{ndf}$ |
 |-------------------------------+----------------------+----------------+----------------+------------------------+------------------------+-----------------------|
@@ -392,6 +395,7 @@ Set PxP deviation as standard for further comparison
   print(tabulate.tabulate(table, headers=labels, tablefmt="orgtbl"))
 #+END_SRC
 
+#+TBLNAME: min_l_50_1500
 #+RESULTS:
 |                                | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\chi^2-\chi^2_\mathrm{min}$ |
 |--------------------------------+----------------------+----------------+----------------+------------------------+------------------------+------------------------------|
@@ -405,7 +409,84 @@ Set PxP deviation as standard for further comparison
 | $\sigma$(SOxSO - SOxP)         |          9.87789e-07 |    2.64961e-12 |     0.00126339 |            4.27526e-05 |            0.000494945 |                       17.241 |
 | $\sigma$(SOxSO + PxP - 2 SOxP) |          8.42738e-07 |    3.20894e-12 |     0.00141523 |            4.80156e-05 |            0.000616931 |                      9.56108 |
 
+** Correlation of parameters
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  def get_corrcoef(lmin=50, lmax=3000, nvar=5):
+      params_SO = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_{}_{}".format(lmin, lmax), "*SO.likelihood")
+      params_P  = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_{}_{}".format(lmin, lmax), "*_P.likelihood")
+
+      corrcoef = np.empty(nvar)
+      for i in range(nvar):
+          SO, P = params_SO[:,i], params_P[:,i]
+          corrcoef[i] = np.corrcoef(SO, P)[0, 1]
+      return corrcoef
+
+  x = np.arange(5)
+  plt.plot(x, get_corrcoef(50, 1500), "o", label=r"$\ell\in[50; 1500]$")
+  plt.plot(x, get_corrcoef(50, 2000), "o", label=r"$\ell\in[50; 2000]$")
+  plt.plot(x, get_corrcoef( 2, 3000), "o", label=r"$\ell\in[2; 3000]$")
+
+  plt.xticks(x, labels[:-1])
+  plt.ylabel(r"$R_{xy}$")
+  plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[59]:
+: <matplotlib.legend.Legend at 0x7f8c5c4c77b8>
+[[file:./obipy-resources/cK6vL9.png]]
+:end:
+
 * MCMC analysis
+#+BEGIN_SRC ipython :session bcv :results none
+  def get_chains(path):
+      import glob
+      all_files = glob.glob(path)
+      # Sort alphabetically
+      all_files.sort()
+      chains = {}
+      for f in all_files:
+          header = pd.read_csv(all_files[0], delim_whitespace=True).columns[1:]
+          df = pd.read_table(f, delim_whitespace=True)
+
+          # Remove '#' in header
+          df.drop(df.columns[[-1,]], axis=1, inplace=True)
+          df.columns = header
+          # Compute delta chi2
+          delta_chi2 = df.chi2-np.min(df.chi2)
+
+          # Remove useless columns
+          df.drop(columns=["minuslogpost", "minuslogprior", "minuslogprior__0", "chi2", "chi2__chi2"], inplace=True)
+          # Insert Delta chi2 before As (which is derived and never plot)
+          df.insert(value=delta_chi2, column="delta_chi2", loc=len(df.columns)-1)
+          key = f.split("/")[-2]
+          chains[key] = df
+      return chains
+
+  ref = [1.04164/100, 3.058, 0.9649, 0.02212, 0.1210, 1]
+  def plot_chains(path, burnin=0, labels=labels):
+      if "$H_0$" in labels:
+        ref[0] = 67.5
+      chains = get_chains(path=path)
+      plt.figure(figsize=(18, 10))
+      for i in range(1, len(labels)):
+          plt.subplot(2, 4, i)
+          plt.ylabel(labels[i-1])
+          for k, v in chains.items():
+              j = k.split("_")[-1]
+              n = np.arange(len(v))
+              if 0 < burnin < 1:
+                  ist = int((1.-burnin)*len(v))
+              else:
+                  ist = int(burnin)
+              plt.plot(n[ist:], v.iloc[:,i][ist:], alpha=0.75, color="C{}".format(j))
+          if i != len(labels)-1:
+              plt.axhline(ref[i-1], color="gray", ls="--", lw=1)
+      plt.subplots_adjust(hspace=0.25, wspace=0.3)
+      plt.legend([k.replace("_", "\_") for k in chains.keys()], loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+
 ** Understanding MCMC /à la/ cobaya
 We run several MCMC for PxP survey (\ell 2; 3000) and *use the covariance matrix from Fisher*
 calculation as input of =cobaya= MCMC algorithm. We check how the input covariance matrix changes the
@@ -545,54 +626,9 @@ Fix likelihood definition by adding a 1/2 factor
             r"$\chi^2-\chi^2_\mathrm{min}$",
             r"$A_\mathrm{s}$"]
 
-  result_path=r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/mcmc"
+  result_path=r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/lambda_cdm"
 #+END_SRC
 
-#+BEGIN_SRC ipython :session bcv :results none
-  def get_chains(path):
-      import glob
-      all_files = glob.glob(path)
-      # Sort alphabetically
-      all_files.sort()
-      chains = {}
-      for f in all_files:
-          header = pd.read_csv(all_files[0], delim_whitespace=True).columns[1:]
-          df = pd.read_table(f, delim_whitespace=True)
-
-          # Remove '#' in header
-          df.drop(df.columns[[-1,]], axis=1, inplace=True)
-          df.columns = header
-          # Compute delta chi2
-          delta_chi2 = df.chi2-np.min(df.chi2)
-
-          # Remove useless columns
-          df.drop(columns=["minuslogpost", "minuslogprior", "minuslogprior__0", "chi2", "chi2__chi2"], inplace=True)
-          # Insert Delta chi2 before As (which is derived and never plot)
-          df.insert(value=delta_chi2, column="delta_chi2", loc=len(df.columns)-1)
-          key = f.split("/")[-2]
-          chains[key] = df
-      return chains
-
-  ref = [1.04164/100, 3.058, 0.9649, 0.02212, 0.1210, 1]
-  def plot_chains(path, burnin=0, labels=labels):
-      chains = get_chains(path=path)
-      plt.figure(figsize=(18, 10))
-      for i in range(1, len(labels)):
-          plt.subplot(2, 4, i)
-          plt.ylabel(labels[i-1])
-          for k, v in chains.items():
-              j = k.split("_")[-1]
-              n = np.arange(len(v))
-              if 0 < burnin < 1:
-                  ist = int((1.-burnin)*len(v))
-              else:
-                  ist = int(burnin)
-              plt.plot(n[ist:], v.iloc[:,i][ist:], alpha=0.75, color="C{}".format(j))
-          if i != len(labels)-1:
-              plt.axhline(ref[i-1], color="gray", ls="--", lw=1)
-      plt.subplots_adjust(hspace=0.25, wspace=0.3)
-      plt.legend([k.replace("_", "\_") for k in chains.keys()], loc="upper left", bbox_to_anchor=(1,1))
-#+END_SRC
 **** PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   plot_chains(result_path + "/*_PxP_*/mcmc*.txt", burnin=0)
@@ -600,41 +636,8 @@ Fix likelihood definition by adding a 1/2 factor
 
 #+RESULTS:
 :results:
-# Out[1038]:
-[[file:./obipy-resources/EiiqVS.png]]
-:end:
-
-**** SOxSO - PxP
-#+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_SOxSO-PxP_*/mcmc*.txt", burnin=0)
-#+END_SRC
-
-#+RESULTS:
-:results:
-# Out[949]:
-[[file:./obipy-resources/VMO7nV.png]]
-:end:
-
-**** SOxP - PxP
-#+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_SOxP-PxP*/mcmc*.txt", burnin=0)
-#+END_SRC
-
-#+RESULTS:
-:results:
-# Out[862]:
-[[file:./obipy-resources/2VFaUD.png]]
-:end:
-
-**** SOxP - SOxSO
-#+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_SOxP-SOxSO*/mcmc*.txt", burnin=0)
-#+END_SRC
-
-#+RESULTS:
-:results:
-# Out[633]:
-[[file:./obipy-resources/omO1vo.png]]
+# Out[340]:
+[[file:./obipy-resources/PtN3XX.png]]
 :end:
 
 *** Triangle plot
@@ -650,15 +653,11 @@ Fix likelihood definition by adding a 1/2 factor
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
   samples = []
-  s, w = get_samples(result_path + "/*_SOxP-SOxSO*2/mcmc*.txt")
-  samples += [MCSamples(samples=s, names=labels, label="SOxP - SOxSO", weights=w, ignore_rows=0.3)]
-
-  for i in [0, 1, 3, 4]:
-      s, w = get_samples(result_path + "/*_SOxSO-PxP*{}/mcmc*.txt".format(i))
-      samples += [MCSamples(samples=s, names=labels, label="SOxSO - PxP - {}".format(i), weights=w, ignore_rows=0.3)]
-  for i in range(5):
-      s, w = get_samples(result_path + "/*_PxP*{}/mcmc*.txt".format(i))
-      samples += [MCSamples(samples=s, names=labels, label="PxP - {}".format(i), weights=w, ignore_rows=0.3)]
+  surveys = ["PxP"]#, "SOxSO", "SOxP", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  for survey in surveys:
+      for i in range(5):
+          s, w = get_samples(result_path + "/*_{}_*{}/mcmc*.txt".format(survey, i))
+          samples += [MCSamples(samples=s, names=labels, weights=w, ignore_rows=0.3)]
 
   g = plots.getSubplotPlotter()
   g.triangle_plot(samples, params=labels[:-2])
@@ -666,8 +665,8 @@ Fix likelihood definition by adding a 1/2 factor
 
 #+RESULTS:
 :results:
-# Out[1043]:
-[[file:./obipy-resources/k6523h.png]]
+# Out[242]:
+[[file:./obipy-resources/CkHXrq.png]]
 :end:
 
 *** Plot variances from MCMC and Hessian
@@ -677,6 +676,8 @@ Fix likelihood definition by adding a 1/2 factor
       table = []
       lines = []
       all_files = glob.glob(path)
+      if len(all_files) == 0:
+        return np.array(table)
       all_files.sort()
       for f in all_files:
           samples, weights = get_samples(f)
@@ -692,37 +693,40 @@ Fix likelihood definition by adding a 1/2 factor
       return table
 #+END_SRC
 
+***** =org= table                                              :noexport:
 #+BEGIN_SRC ipython :session bcv :results none
   table = get_mcmc_variances(result_path + "/results*/mcmc*.txt")
-  display(HTML(tabulate.tabulate(table, headers=labels[:-2], tablefmt="html")))
 #+END_SRC
-
-***** =org= table                                              :noexport:
 #+BEGIN_SRC ipython :session bcv :results raw output
   print(tabulate.tabulate(table, headers=labels[:-2], tablefmt="orgtbl"))
 #+END_SRC
 
 #+RESULTS:
-|                        | $\theta_\mathrm{MC}$ | $\log(10^{10}A_\mathrm{s})$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
-|------------------------+----------------------+-----------------------------+----------------+------------------------+------------------------|
-| results_PxP_667_0      |          3.72909e-06 |                  0.00417638 |     0.00389413 |            0.000145411 |             0.00159717 |
-| results_PxP_667_1      |          3.57642e-06 |                  0.00422906 |     0.00396238 |            0.000143895 |             0.00163655 |
-| results_PxP_667_2      |          3.55353e-06 |                  0.00429424 |     0.00394772 |            0.000144947 |             0.00163285 |
-| results_PxP_667_3      |          3.52397e-06 |                  0.00421843 |     0.00391569 |            0.000135441 |             0.00160636 |
-| results_PxP_667_4      |          3.53659e-06 |                  0.00420714 |     0.00398142 |            0.000146265 |             0.00162171 |
-| results_SOxP-PxP_667_0 |          4.31904e-07 |                 0.000403276 |    0.000511504 |            1.58353e-05 |            0.000165415 |
-| results_SOxP-PxP_667_2 |          4.56856e-07 |                 0.000391472 |    0.000511549 |            1.60144e-05 |            0.000161055 |
-| results_SOxP-PxP_667_3 |          3.88202e-06 |                  0.00337982 |      0.0027732 |            5.77201e-09 |             0.00019168 |
-| results_SOxP-PxP_667_4 |           1.0527e-06 |                  0.00133597 |     0.00160094 |            5.11123e-05 |            0.000555544 |
-| results_SOxP-SOxSO_0   |          7.72041e-07 |                 0.000878449 |     0.00115087 |            4.20484e-05 |            0.000372655 |
-| results_SOxP-SOxSO_1   |          1.25393e-05 |                  0.00451828 |     0.00715077 |            0.000256968 |             0.00223155 |
-| results_SOxP-SOxSO_2   |          4.37106e-07 |                 0.000373563 |     0.00046037 |             1.4894e-05 |            0.000152093 |
-| results_SOxSO-PxP_0    |          8.42204e-07 |                 0.000796194 |    0.000987998 |            2.94139e-05 |             0.00032552 |
-| results_SOxSO-PxP_1    |          8.62444e-07 |                 0.000791945 |     0.00100539 |            3.13933e-05 |            0.000324094 |
-| results_SOxSO-PxP_3    |          8.60141e-07 |                 0.000779817 |    0.000979011 |            3.14452e-05 |            0.000316173 |
-| results_SOxSO-PxP_4    |          8.86752e-07 |                  0.00076371 |     0.00095145 |            3.02972e-05 |            0.000314076 |
+|                          | $\theta_\mathrm{MC}$ | $\log(10^{10}A_\mathrm{s})$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
+|--------------------------+----------------------+-----------------------------+----------------+------------------------+------------------------|
+| results_PxP_667_0        |          4.74425e-06 |                   0.0057473 |      0.0052601 |            0.000193577 |             0.00217759 |
+| results_PxP_667_1        |          4.82155e-06 |                  0.00574706 |     0.00539517 |            0.000194073 |             0.00220569 |
+| results_PxP_667_2        |          5.21727e-06 |                  0.00588659 |     0.00577756 |            0.000194396 |             0.00219697 |
+| results_PxP_667_3        |          4.87957e-06 |                  0.00584553 |     0.00551065 |            0.000177916 |             0.00223142 |
+| results_PxP_667_4        |           5.2497e-06 |                  0.00609538 |     0.00577003 |            0.000227061 |             0.00241091 |
+| results_SOxP-PxP_667_0   |          5.97218e-07 |                 0.000572401 |    0.000664856 |            2.37293e-05 |            0.000237613 |
+| results_SOxP-PxP_667_1   |          5.86433e-06 |                   0.0033117 |     0.00372901 |            0.000327235 |             0.00102174 |
+| results_SOxP-PxP_667_2   |          5.62752e-07 |                  0.00048048 |    0.000619475 |            2.09465e-05 |            0.000190906 |
+| results_SOxP-PxP_667_3   |          6.75453e-07 |                 0.000594023 |    0.000764447 |            2.28355e-05 |            0.000237303 |
+| results_SOxP-PxP_667_4   |          1.92234e-06 |                  0.00333287 |     0.00331181 |            0.000117523 |             0.00160005 |
+| results_SOxP-SOxSO_667_0 |           7.0684e-07 |                 0.000635875 |    0.000750761 |            2.23252e-05 |            0.000251479 |
+| results_SOxP-SOxSO_667_1 |          2.54656e-06 |                  0.00324051 |     0.00474923 |             0.00023869 |            0.000607815 |
+| results_SOxP-SOxSO_667_2 |          5.85205e-07 |                 0.000571013 |    0.000684214 |            1.92067e-05 |            0.000229032 |
+| results_SOxP-SOxSO_667_3 |          5.81253e-07 |                  0.00158462 |     0.00171999 |            3.69325e-05 |             0.00069581 |
+| results_SOxP-SOxSO_667_4 |          2.18445e-06 |                  0.00527362 |     0.00327569 |            9.21607e-05 |             0.00272104 |
+| results_SOxSO-PxP_667_0  |          1.08559e-06 |                 0.000941411 |     0.00123661 |            3.88313e-05 |            0.000389722 |
+| results_SOxSO-PxP_667_1  |          1.63874e-06 |                  0.00145313 |     0.00203199 |            7.77133e-05 |            0.000504334 |
+| results_SOxSO-PxP_667_2  |          1.27069e-06 |                  0.00111489 |     0.00132153 |            4.33265e-05 |            0.000451924 |
+| results_SOxSO-PxP_667_3  |          1.16467e-06 |                  0.00112296 |     0.00136685 |            4.34647e-05 |            0.000454294 |
+| results_SOxSO-PxP_667_4  |          9.84448e-07 |                 0.000905686 |     0.00109324 |            3.58838e-05 |            0.000382165 |
+| results_SOxSO_667_0      |          2.75347e-06 |                  0.00431607 |     0.00425779 |            0.000124171 |             0.00157076 |
 
-**** Compare MCMC to minimization and Fisher
+**** Compare MCMC to minimization and Fisher                  :deprecated:
 | PxP                             | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
 |---------------------------------+----------------------+----------------+----------------+------------------------+------------------------|
 | $\sigma$ (Minimization)         |          4.99937e-06 |    1.24047e-11 |     0.00544548 |            0.000206822 |              0.0022281 |
@@ -766,7 +770,7 @@ Fix likelihood definition by adding a 1/2 factor
 [[file:./obipy-resources/7t1JvP.png]]
 :end:
 
-**** From Hessian
+**** From Hessian                                             :deprecated:
 #+BEGIN_SRC ipython :session bcv :results none
   import pickle
   def get_hessians(f):
@@ -813,80 +817,53 @@ Fix likelihood definition by adding a 1/2 factor
 | output_SOxSO-PxP_3  |            1.04358e-06 |                 0.000916334 |            0.00126595 |            3.51463e-05 |            0.000428267 |
 | output_SOxSO-PxP_4  |            1.09634e-06 |                 0.000803228 |            0.00118938 |            3.60983e-05 |            0.000384808 |
 **** Summary
-***** SOxSO - PxP
-#+TBLNAME: soxso_pxp
-|                           | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
-|---------------------------+----------------------+----------------+----------------+------------------------+------------------------|
-| MCMC PxP                  |       3.59242536e-06 | 8.90430283e-12 | 3.91641588e-03 |         1.41296535e-04 |        1.60043263e-03  |
-| MCMC (n° 0)               |          8.42204e-07 |    1.69715e-12 |    0.000987998 |            2.94139e-05 |             0.00032552 |
-| Min. ($\ell\in[2;3000]$)  |          3.76192e-06 |    9.58206e-12 |     0.00406034 |            0.000171957 |             0.00181588 |
-| Min. ($\ell\in[50;2000]$) |          2.99731e-06 |    7.16794e-12 |     0.00314853 |            0.000122405 |             0.00133315 |
-| Min. ($\ell\in[50;1500]$) |           1.8413e-06 |    4.23132e-12 |      0.0021341 |            7.39349e-05 |            0.000775937 |
-# | Planck (full $\ell$ range) |          4.88562e-06 |    1.22406e-11 |  0.00529791672 |            2.04027e-04 |          0.00223889971 |
-# | MCMC (n° 1)                |          8.62444e-07 |    1.68814e-12 |     0.00100539 |            3.13933e-05 |            0.000324094 |
-# | MCMC (n° 3)                |          8.60141e-07 |    1.66227e-12 |    0.000979011 |            3.14452e-05 |            0.000316173 |
-# | MCMC (n° 4)                |          8.86752e-07 |    1.62794e-12 |     0.00095145 |            3.02972e-05 |            0.000314076 |
-***** SOxP - PxP
-#+TBLNAME: soxp_pxp
-|             | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
-|-------------+----------------------+----------------+----------------+------------------------+------------------------|
-| MCMC (n° 0) |          4.31904e-07 |    0.000403276 |    0.000511504 |            1.58353e-05 |            0.000165415 |
-# | MCMC (n° 2) |          4.56856e-07 |    0.000391472 |    0.000511549 |            1.60144e-05 |            0.000161055 |
-# | MCMC (n° 3) |          3.88202e-06 |     0.00337982 |      0.0027732 |            5.77201e-09 |             0.00019168 |
-# | MCMC (n° 4) |           1.0527e-06 |     0.00133597 |     0.00160094 |            5.11123e-05 |            0.000555544 |
-
-***** SOxP - SOxSO
-#+TBLNAME: soxp_soxso
-|                           | $\theta_\mathrm{MC}$ | $A_\mathrm{s}$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ |
-|---------------------------+----------------------+----------------+----------------+------------------------+------------------------|
-| MCMC (n° 2)               |          4.37106e-07 |    7.95761e-13 |     0.00046037 |             1.4894e-05 |            0.000152093 |
-| Min. ($\ell\in[2;3000]$)  |          2.53148e-06 |    7.13821e-12 |     0.00291831 |            0.000104709 |             0.00135525 |
-| Min. ($\ell\in[50;2000]$) |          2.03202e-06 |    5.97189e-12 |     0.00261404 |            8.41646e-05 |             0.00127252 |
-| Min. ($\ell\in[50;1500]$) |          9.88702e-07 |    2.64955e-12 |     0.00126386 |            4.27381e-05 |            0.000495158 |
-
-***** Plotting everything
-#+BEGIN_SRC ipython :session bcv :results raw drawer :var data1=soxso_pxp :var data2=soxp_soxso :var data3=soxp_pxp
-  ref_PP = np.array(data1[0][1:], dtype=np.float)
-  fig, ax = plt.subplots(1, 3, sharex='col', sharey='row', figsize=(10, 5))
+#+BEGIN_SRC ipython :session bcv :results raw drawer :var min_l_2_3000=min_l_2_3000 :var min_l_50_2000=min_l_50_2000 :var min_l_50_1500=min_l_50_1500
+  mcmc = {}
+  surveys = ["PxP", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  for survey in surveys:
+      mcmc_var = get_mcmc_variances(result_path + "/results*_{}_*/mcmc*.txt".format(survey), burnin=0.3, keep_As=True)
+      if mcmc_var.size != 0:
+          mcmc_var = np.mean(np.array(mcmc_var[:, 1:], dtype=np.float), axis=0)
+          # Use As
+          mcmc_var[1] = mcmc_var[-1]; mcmc_var = mcmc_var[:-1]
+          mcmc[survey] = mcmc_var
+  fig, ax = plt.subplots(1, len(surveys)-1, sharex="col", sharey="row", figsize=(15, 5))
   xlabels = [r"$\theta_\mathrm{MC}$",
-            r"$A_\mathrm{s}$",
-            r"$n_\mathrm{s}$",
-            r"$\Omega_\mathrm{b}h^2$",
-            r"$\Omega_\mathrm{c}h^2$"]
-  x = np.arange(5)
-  for i in range(1, len(data1)):
-      values = np.array(data1[i][1:], dtype=np.float)
-      ax[0].plot(x, ref_PP/values, "o")
-  ax[0].set_ylabel(r"$\Delta\sigma$ (/Planck)")
-  ax[0].set_title("SOxSO - PxP")
-  ax[0].set_xticks(x)
-  ax[0].set_xticklabels(xlabels)
+             r"$A_\mathrm{s}$",
+             r"$n_\mathrm{s}$",
+             r"$\Omega_\mathrm{b}h^2$",
+             r"$\Omega_\mathrm{c}h^2$"]
+  x = np.arange(len(xlabels))
+  for i, survey in enumerate(surveys[1:]):
+      ax[i].plot(x, mcmc["PxP"]/mcmc[survey], "o")
+      ax[i].set_title(survey)
+      ax[i].set_xticks(x)
+      ax[i].set_xticklabels(xlabels)
 
-  for i in range(0, len(data2)):
-      values = np.array(data2[i][1:], dtype=np.float)
-      ax[1].plot(x, ref_PP/values, "o", label=data2[i][0])
-
-  ax[1].set_title("SOxP - SOxSO")
-  ax[1].set_xticks(x)
-  ax[1].set_xticklabels(xlabels)
-  ax[1].legend(loc="upper left", bbox_to_anchor=(1,1))
-
-  for i in range(0, len(data3)):
-      values = np.array(data3[i][1:], dtype=np.float)
-      ax[2].plot(x, ref_PP/values, "o", label=data2[i][0])
-
-  # ax[2].set_title("SOxP - PxP")
-  # ax[2].set_xticks(x)
-  # ax[2].set_xticklabels(xlabels)
-  # ax[2].legend(loc="upper left", bbox_to_anchor=(1,1))
-
+  ax[0].set_ylabel(r"$\sigma{\rm(residuals)}/\sigma{\rm(Planck)}$", fontsize=14)
   plt.subplots_adjust(wspace=0.1)
+
+  mini = {}
+  mini["SOxSO-PxP"] = [min_l_2_3000[6][1:-1], min_l_50_2000[6][1:-1], min_l_50_1500[6][1:-1]]
+  mini["SOxP-SOxSO"] = [min_l_2_3000[7][1:-1], min_l_50_2000[7][1:-1], min_l_50_1500[7][1:-1]]
+  for i in mini["SOxSO-PxP"]:
+      ax[0].plot(x, mcmc["PxP"]/np.array(i, dtype=np.float), "o")
+  for i in mini["SOxP-SOxSO"]:
+      ax[2].plot(x, mcmc["PxP"]/np.array(i, dtype=np.float), "o")
+
+  ax[2].legend(["MCMC",
+                r"Minimization $\ell\in[2;3000]$",
+                r"Minimization $\ell\in[50;2000]$",
+                r"Minimization $\ell\in[50;1500]$"],
+               loc="upper left", bbox_to_anchor=(1,1))
+
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[1078]:
-[[file:./obipy-resources/eOB82R.png]]
+# Out[354]:
+: <matplotlib.legend.Legend at 0x7f22de74b780>
+[[file:./obipy-resources/UTmCrn.png]]
 :end:
 ** \Lambda CDM + ALens
 #+BEGIN_SRC ipython :session bcv :results none
@@ -902,7 +879,7 @@ Fix likelihood definition by adding a 1/2 factor
   result_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ALens"
 #+END_SRC
 
-*** Check minimization
+*** Check minimization                                         :deprecated:
 Get Hessians from minimizations
 #+BEGIN_SRC ipython :session bcv :results raw output
   def check_minimization(path):
@@ -951,198 +928,309 @@ Get Hessians from minimizations
 *** Check chains
 **** PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_PxP*/mcmc*.txt", labels=labels)
+  plot_chains(result_path + "/*_PxP_*/mcmc*.txt", burnin=0, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[1012]:
-[[file:./obipy-resources/ZesjxE.png]]
+# Out[444]:
+[[file:./obipy-resources/pFHe0D.png]]
+:end:
+
+**** SOxSO
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/*_SOxSO_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[229]:
+[[file:./obipy-resources/guaAFa.png]]
+:end:
+
+**** SOxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/*_SOxP_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[246]:
+[[file:./obipy-resources/4P2ryo.png]]
 :end:
 
 **** SOxSO - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_SOxSO-PxP*/mcmc*.txt", labels=labels)
+  plot_chains(result_path + "/*_SOxSO-PxP_*/mcmc*.txt", burnin=0.5, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[602]:
-[[file:./obipy-resources/W1oxpG.png]]
+# Out[449]:
+[[file:./obipy-resources/pWuCYN.png]]
 :end:
 
 **** SOxP - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_SOxP-PxP*/mcmc*.txt", burnin=0, labels=labels)
+  plot_chains(result_path + "/*_SOxP-PxP*/mcmc*.txt", burnin=0.5, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[603]:
-[[file:./obipy-resources/xIdBCP.png]]
+# Out[448]:
+[[file:./obipy-resources/BeJ5Ax.png]]
 :end:
 
 **** SOxP - SOxSO
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_SOxP-SOxSO*/mcmc*.txt", labels=labels)
+  plot_chains(result_path + "/*_SOxP-SOxSO*/mcmc*.txt", burnin=0, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[604]:
-[[file:./obipy-resources/NWDgan.png]]
+# Out[447]:
+[[file:./obipy-resources/c0KVYF.png]]
 :end:
+
 *** Triangle plot
 #+BEGIN_SRC ipython :session bcv :results none
-  def plot_samples(path, burnin=0.3):
+  def plot_samples(path, burnin=0.3, colors=None, scale=None, labels=labels, legend=None):
       samples = []
-      colors = []
-      line_args = []
-      all_files = glob.glob(path)
-      all_files.sort()
+      the_colors = []
+      all_files = []
+      if isinstance(path, list):
+          for p in path:
+              all_files.extend(glob.glob(p))
+      else:
+          all_files = glob.glob(path)
+          all_files.sort()
       for f in all_files:
           s, w = get_samples(f)
+          s = s[:, :-2]
+          if scale:
+              renorm = np.array(scale)/(w.dot(s)/np.sum(w))
+              s *= renorm
           survey = f.split("/")[-2]
           i = survey.split("_")[-1]
           survey = survey.split("_")[1]
-          samples += [MCSamples(samples=s, names=labels, label="{} - MCMC {}".format(survey, i), weights=w, ignore_rows=burnin)]
-          colors += ["-C{}".format(i)]
+          samples += [MCSamples(samples=s, names=labels[:-2], label="{} - MCMC {}".format(survey, i), weights=w, ignore_rows=burnin)]
+          the_colors += ["-C{}".format(i)]
 
       g = plots.getSubplotPlotter()
-      g.settings.lineM = colors
-      g.triangle_plot(samples, params=labels[:-2])#, line_args=len(all_files)*[{"lw": 1}])
+      g.settings.lineM = colors if colors else the_colors
+      if legend:
+          g.triangle_plot(samples, params=labels[:-2], legend_labels=[])
+          g.add_legend(legend, colored_text=True, figure=True, align_right=True)
+      else:
+          g.triangle_plot(samples, params=labels[:-2])
+      return g
 #+END_SRC
 
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  ref = [1.04164/100, 3.058, 0.9649, 0.02212, 0.1210, 1]
+  mcmc_survey= ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  mcmc_nbr = ["2"]
+  paths = []
+  for f in mcmc_survey:
+    for g in mcmc_nbr:
+      paths += [result_path + "/*_{}_*{}/mcmc*.txt".format(f,g)]
+  colors = []
+  for i,_ in enumerate(mcmc_survey):
+      colors += len(mcmc_nbr)*["-C{}".format(i)]
+  plot_samples(path=paths, burnin=0.5, scale=ref, colors=colors, legend=mcmc_survey, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[589]:
+: <getdist.plots.GetDistPlotter at 0x7f22d6f1beb8>
+[[file:./obipy-resources/Lflb1w.png]]
+:end:
+
+*** Plot variances from MCMC
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  use_As = False
+  mcmc_nbr = ["2"]
+  mcmc = {}
+  surveys = ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  for survey in surveys:
+      mcmc_var = get_mcmc_variances(result_path + "/results*_{}_*{}/mcmc*.txt".format(survey, ",".join(mcmc_nbr)), burnin=0.3, keep_As=use_As)
+      if mcmc_var.size != 0:
+          mcmc_var = np.mean(np.array(mcmc_var[:, 1:], dtype=np.float), axis=0)
+          if use_As:
+              # Use As
+              mcmc_var[1] = mcmc_var[-1]; mcmc_var = mcmc_var[:-1]
+          mcmc[survey] = mcmc_var
+  xlabels = [r"$\theta_\mathrm{MC}$",
+             r"$\log(10^{10}A_\mathrm{s})$",
+             r"$n_\mathrm{s}$",
+             r"$\Omega_\mathrm{b}h^2$",
+             r"$\Omega_\mathrm{c}h^2$",
+            r"$\mathrm{A}_\mathrm{L}$"]
+  if use_As:
+      xlabels[1] = r"$A_\mathrm{s}$"
+  x = np.arange(len(xlabels))
+  for i, survey in enumerate(surveys):
+      y = mcmc["PxP"]/mcmc[survey]
+      plt.plot(x, y, "o", label=survey, color="C{}".format(i))
+      plt.axhline(np.mean(y), color="C{}".format(i), ls="--", lw=1)
+
+  fisher = np.array([5.488784226430075e-06, 0.006886322958075309, 0.006082145093362834, 0.00022563053346601842, 0.0027330648180420945, 0.07145648912030945])
+  plt.plot(x, mcmc["PxP"]/fisher, "ok", label="fisher")
+  plt.xticks(x, xlabels)
+  plt.ylabel(r"$\sigma{\rm(residuals)}/\sigma{\rm(Planck)}$", fontsize=14)
+  plt.ylim(0,)
+  leg = plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+  for i, text in enumerate(leg.get_texts()[:-1]):
+      text.set_color("C{}".format(i))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[585]:
+[[file:./obipy-resources/pv7Npe.png]]
+:end:
+
+** \Lambda CDM + H0
+#+BEGIN_SRC ipython :session bcv :results none
+  labels = [r"$H_0$",
+            r"$\log(10^{10}A_\mathrm{s})$",
+            r"$n_\mathrm{s}$",
+            r"$\Omega_\mathrm{b}h^2$",
+            r"$\Omega_\mathrm{c}h^2$",
+            r"$\mathrm{A}_\mathrm{L}$",
+            r"$\chi^2-\chi^2_\mathrm{min}$",
+            r"$A_\mathrm{s}$"]
+
+  result_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/H0"
+#+END_SRC
+
+*** Check chains
 **** PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_samples(result_path + "/*_PxP*_[0-4]/mcmc*.txt", burnin=0.3)
+  plot_chains(result_path + "/*_PxP_*/mcmc*.txt", burnin=0.5, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[1024]:
-[[file:./obipy-resources/8XywgR.png]]
+# Out[467]:
+[[file:./obipy-resources/lAIx2L.png]]
 :end:
+
+**** SOxSO
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/*_SOxSO_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[258]:
+[[file:./obipy-resources/nUB6G1.png]]
+:end:
+
+**** SOxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/*_SOxP_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[259]:
+[[file:./obipy-resources/uk89xg.png]]
+:end:
+
 **** SOxSO - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_samples(result_path + "/*_SOxSO-PxP*_[2,3]/mcmc*.txt", burnin=0.3)
+  plot_chains(result_path + "/*_SOxSO-PxP_*/mcmc*.txt", burnin=0.5, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[937]:
-[[file:./obipy-resources/qyml5n.png]]
+# Out[468]:
+[[file:./obipy-resources/PdjqiK.png]]
 :end:
+
 **** SOxP - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_samples(result_path + "/*_SOxP-PxP*_[0,2]/mcmc*.txt", burnin=0.3)
+  plot_chains(result_path + "/*_SOxP-PxP*/mcmc*.txt", burnin=0.5, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[938]:
-[[file:./obipy-resources/sdJfUB.png]]
+# Out[469]:
+[[file:./obipy-resources/T5RVzQ.png]]
 :end:
 
 **** SOxP - SOxSO
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_samples(result_path + "/*_SOxP-SOxSO*_[1,2,4]/mcmc*.txt", burnin=0.3)
+  plot_chains(result_path + "/*_SOxP-SOxSO*/mcmc*.txt", burnin=0.5, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[939]:
-[[file:./obipy-resources/7kMBK0.png]]
+# Out[470]:
+[[file:./obipy-resources/MIy2Oe.png]]
 :end:
-*** Compute standard deviation from MCMC
-#+BEGIN_SRC ipython :session bcv :results none
-  tablePP = get_mcmc_variances(result_path + "/*_PxP_*/mcmc*.txt", burnin=0.3)
-  tableSSPP = get_mcmc_variances(result_path + "/*_SOxSO-PxP_*[2,3]/mcmc*.txt", burnin=0.3)
-  tableSPSS = get_mcmc_variances(result_path + "/*_SOxP-SOxSO_*[1,2,4]/mcmc*.txt", burnin=0.3)
-#+END_SRC
 
-**** PxP
-#+BEGIN_SRC ipython :session bcv :results raw output
-  print(tabulate.tabulate(tablePP, headers=labels[:-2], tablefmt="orgtbl"))
-#+END_SRC
-
-#+TBLNAME: pp
-#+RESULTS:
-|                   | $\theta_\mathrm{MC}$ | $\log(10^{10}A_\mathrm{s})$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\mathrm{A}_\mathrm{L}$ |
-|-------------------+----------------------+-----------------------------+----------------+------------------------+------------------------+-------------------------|
-| results_PxP_666_0 |          2.25445e-06 |                  0.00280028 |     0.00252237 |            9.44371e-05 |              0.0011046 |               0.0330274 |
-| results_PxP_666_1 |           2.2771e-06 |                  0.00271089 |     0.00251489 |            9.19644e-05 |             0.00106107 |               0.0314946 |
-| results_PxP_666_2 |          2.13857e-06 |                  0.00266458 |     0.00245774 |            8.94339e-05 |             0.00103877 |               0.0306628 |
-| results_PxP_666_4 |          2.25782e-06 |                  0.00277658 |     0.00253481 |            9.34218e-05 |             0.00109458 |               0.0315018 |
-
-**** SOxSO-PxP
-#+BEGIN_SRC ipython :session bcv :results raw output
-  print(tabulate.tabulate(tableSSPP, headers=labels[:-2], tablefmt="orgtbl"))
-#+END_SRC
-
-#+TBLNAME: sspp
-#+RESULTS:
-|                         | $\theta_\mathrm{MC}$ | $\log(10^{10}A_\mathrm{s})$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\mathrm{A}_\mathrm{L}$ |
-|-------------------------+----------------------+-----------------------------+----------------+------------------------+------------------------+-------------------------|
-| results_SOxSO-PxP_666_2 |          9.05033e-07 |                 0.000803214 |     0.00102366 |             3.4062e-05 |            0.000335125 |               0.0141448 |
-| results_SOxSO-PxP_666_3 |          8.97457e-07 |                 0.000829307 |     0.00105136 |             3.3716e-05 |            0.000346686 |               0.0141123 |
-
-**** SOxP-SOxSO
-#+BEGIN_SRC ipython :session bcv :results raw output
-  print(tabulate.tabulate(tableSPSS, headers=labels[:-2], tablefmt="orgtbl"))
-#+END_SRC
-
-#+TBLNAME: spss
-#+RESULTS:
-|                          | $\theta_\mathrm{MC}$ | $\log(10^{10}A_\mathrm{s})$ | $n_\mathrm{s}$ | $\Omega_\mathrm{b}h^2$ | $\Omega_\mathrm{c}h^2$ | $\mathrm{A}_\mathrm{L}$ |
-|--------------------------+----------------------+-----------------------------+----------------+------------------------+------------------------+-------------------------|
-| results_SOxP-SOxSO_666_1 |          4.14193e-07 |                 0.000383167 |    0.000473693 |            1.57655e-05 |            0.000158367 |              0.00695751 |
-| results_SOxP-SOxSO_666_2 |           4.1753e-07 |                 0.000364523 |    0.000451245 |            1.45673e-05 |            0.000149416 |              0.00647078 |
-| results_SOxP-SOxSO_666_4 |          3.86853e-07 |                 0.000339615 |    0.000422059 |             1.4264e-05 |            0.000139798 |              0.00667364 |
-
-**** Plot everything together
-First check MCMC /vs./ Hessian
+*** Triangle plot
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  hessians = check_minimization(result_path + "/*_PxP_*[0,1,2,4]/min*.pkl")
-  hessians = np.array(hessians[:, 3:], dtype=np.float)
-  mcmc = np.array(tablePP[:, 1:], dtype=np.float)
-  for i in range(np.size(tablePP, 0)):
-      label = tablePP[i, 0].split("_")[-1]
-      plt.plot(hessians[i,]/mcmc[i,], "o", label="simulation {}".format(label), color="C{}".format(label))
-  plt.ylabel(r"$\Delta\sigma$ (/MCMC)")
-  xlabels = labels[:-2]
-  plt.xticks(np.arange(len(xlabels)), xlabels)
-  plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+  ref = [67.5, 3.058, 0.9649, 0.02212, 0.1210, 1]
+  mcmc_survey= ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  mcmc_nbr = ["0"]
+  paths = []
+  for f in mcmc_survey:
+    for g in mcmc_nbr:
+      paths += [result_path + "/*_{}_*{}/mcmc*.txt".format(f,g)]
+  colors = []
+  for i,_ in enumerate(mcmc_survey):
+      colors += len(mcmc_nbr)*["-C{}".format(i)]
+  plot_samples(path=paths, burnin=0.5, scale=ref, colors=colors, legend=mcmc_survey, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[757]:
-: <matplotlib.legend.Legend at 0x7fcbe798ff28>
-[[file:./obipy-resources/UXgu1u.png]]
+# Out[591]:
+: <getdist.plots.GetDistPlotter at 0x7f22d71fd630>
+[[file:./obipy-resources/YGYD6n.png]]
 :end:
 
-#+BEGIN_SRC ipython :session bcv :results raw drawer :var pp=pp :var sspp=sspp :var spss=spss
-  data = {"PP": pp, "SOxSO - PxP": sspp, "SOxP - SOxSO": spss}
-  sigmas = {}
-  for k, v in data.items():
-      v = list(zip(*v))
-      v = np.array(v[1:], dtype=np.float)
-      sigmas[k] = np.mean(v, axis=1)
+*** Plot variances from MCMC
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  use_As = False
+  mcmc_nbr = ["2"]
+  mcmc = {}
+  surveys = ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  for survey in surveys:
+      mcmc_var = get_mcmc_variances(result_path + "/results*_{}_*{}/mcmc*.txt".format(survey, ",".join(mcmc_nbr)), burnin=0.3, keep_As=use_As)
+      if mcmc_var.size != 0:
+          mcmc_var = np.mean(np.array(mcmc_var[:, 1:], dtype=np.float), axis=0)
+          if use_As:
+              # Use As
+              mcmc_var[1] = mcmc_var[-1]; mcmc_var = mcmc_var[:-1]
+          mcmc[survey] = mcmc_var
   xlabels = labels[:-2]
+  if use_As:
+      xlabels[1] = r"$A_\mathrm{s}$"
+
   x = np.arange(len(xlabels))
-  for k, v in sigmas.items():
-      if k == "PP":
-        continue
-      plt.plot(x, sigmas["PP"]/v-1, "o", label=k)
-  plt.ylabel(r"$\Delta\sigma$ (/Planck)")
-  plt.xticks(x, labels[:-2])
-  plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+  for i, survey in enumerate(surveys):
+      y = mcmc["PxP"]/mcmc[survey]
+      plt.plot(x, y, "o", label=survey, color="C{}".format(i))
+      plt.axhline(np.mean(y), color="C{}".format(i), ls="--", lw=1)
+
+  fisher = np.array([1.1685398799157372, 0.006836962297205166, 0.006080663682347812, 0.00022536977360943547, 0.0027340459518635477, 0.07147321760124377])
+  # plt.plot(x, mcmc["PxP"]/fisher, "ok", label="fisher")
+
+  plt.xticks(x, xlabels)
+  plt.ylabel(r"$\sigma{\rm(residuals)}/\sigma{\rm(Planck)}$", fontsize=14)
+  plt.ylim(0,)
+  leg = plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+  for i, text in enumerate(leg.get_texts()):
+    text.set_color("C{}".format(i))
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[756]:
-: <matplotlib.legend.Legend at 0x7fcbe7ecafd0>
-[[file:./obipy-resources/3dtefc.png]]
+# Out[578]:
+[[file:./obipy-resources/53ujMY.png]]
 :end:
