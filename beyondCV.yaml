@@ -14,8 +14,8 @@ simulation:
     ALens         : &ALens 1.
 
 experiment:
-  lmin : 2
-  lmax : 3000
+  lmin : 50
+  lmax : 2000
   fsky : 0.4
 
   survey:
@@ -28,6 +28,7 @@ experiment:
 
   freq_all_SO: [27, 39, 93, 145, 225, 280] # GHz
   freq_SO: [93, 145, 225] # GHz
+  sensitivity_mode_SO: 1 #  0: threshold, 1: baseline, 2: goal
 
 # Cobaya setup
 cobaya:
