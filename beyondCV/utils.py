@@ -21,7 +21,7 @@ def get_noise(p, exp):
     else:
         from beyondCV import V3calc as V3
         freq_all = np.array(p["freq_all_%s"%exp])
-        sensitivity_mode = 1 # baseline
+        sensitivity_mode = p["sensitivity_mode_%s"%exp]
         ell,N_ell_T_LA,N_ell_P_LA,Map_white_noise_levels \
             = V3.so_V3_LA_noise(sensitivity_mode, p["fsky"], lmin, lmax, delta_ell=1, beam_corrected=True)
         freq=np.array(p["freq_%s"%exp])
