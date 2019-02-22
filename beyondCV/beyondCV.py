@@ -88,6 +88,7 @@ def simulation(setup):
         raise ValueError("Unknown survey '{}'!".format(survey))
 
     # Store simulation informations
+    simu = setup["simulation"]
     simu.update({"Dl": Dl_obs, "covmat": covmat, "chi2ndf_theory": chi2_theo})
 
     print("{} chi2(theo)/ndf = {}".format(survey, chi2_theo))
