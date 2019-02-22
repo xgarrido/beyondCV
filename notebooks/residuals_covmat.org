@@ -45,7 +45,7 @@
 ** Load yaml file
 #+BEGIN_SRC ipython :session rc :results none
   import yaml
-  with open("residuals_covmat.yaml", "r") as stream:
+  with open("../beyondCV.yaml", "r") as stream:
       setup = yaml.load(stream)
 #+END_SRC
 
@@ -54,7 +54,9 @@
   import numpy as np
   # Get experiment setup
   experiment = setup["experiment"]
-  lmin, lmax = experiment["lmin"], experiment["lmax"]
+  # Extend ell range for plotting purpose
+  lmin, lmax = 2, 3000
+  experiment["lmin"], experiment["lmax"] = lmin, lmax
 
   from beyondCV import utils
   Dltt = utils.get_theory_cls(setup, lmax)
@@ -66,7 +68,6 @@ Plot CMB spectrum
 #+BEGIN_SRC ipython :session rc :results raw drawer
   %matplotlib inline
   import matplotlib.pyplot as plt
-  plt.rcParams["text.usetex"] = True
   plt.plot(ls, Dl)
   plt.xlabel(r"$\ell$")
   plt.ylabel(r"$\frac{\ell(\ell+1)}{2\pi}\,C_\ell$ [$\mu$K$^2$]")
@@ -74,13 +75,15 @@ Plot CMB spectrum
 
 #+RESULTS:
 :results:
-# Out[10]:
+# Out[77]:
 : Text(0, 0.5, '$\\frac{\\ell(\\ell+1)}{2\\pi}\\,C_\\ell$ [$\\mu$K$^2$]')
-[[file:./obipy-resources/xUMmkj.png]]
+[[file:./obipy-resources/wGVigN.png]]
 :end:
 
 ** Get noise from experiment
-#+BEGIN_SRC ipython :session rc :results none
+
+Plot the experiment noise for Planck and Simons Observatory
+#+BEGIN_SRC ipython :session rc :results raw drawer
   freq_Planck, DNl_array_Planck = utils.get_noise(experiment, "Planck")
   freq_Planck = list(freq_Planck)
   freq_Planck.append("all")
@@ -89,21 +92,6 @@ Plot CMB spectrum
   freq_SO = list(freq_SO)
   freq_SO.append("all")
 
-  ns = {}
-  DNl = {}
-  for freq in freq_Planck:
-      key = "Planck_%s" % freq
-      ns[key] = 2.
-      DNl[key] = DNl_array_Planck[freq]*ns[key]
-
-  for freq in freq_SO:
-      key = "SO_%s" % freq
-      ns[key] = 10.
-      DNl[key] = DNl_array_SO[freq]*ns[key]
-#+END_SRC
-
-Plot the experiment noise for Planck and Simons Observatory
-#+BEGIN_SRC ipython :session rc :results raw drawer
   plt.figure(figsize=(10,5))
   grid = plt.GridSpec(1, 2, hspace=0, wspace=0)
   planck = plt.subplot(grid[0])
@@ -130,9 +118,99 @@ Plot the experiment noise for Planck and Simons Observatory
 
 #+RESULTS:
 :results:
-# Out[12]:
-: <matplotlib.legend.Legend at 0x7f14a7114ba8>
-[[file:./obipy-resources/JQwCSJ.png]]
+# Out[78]:
+: <matplotlib.legend.Legend at 0x7f3d520d7908>
+[[file:./obipy-resources/y5O9SE.png]]
+:end:
+
+*** Check difference between SO sensitivity modes using old SO file
+#+BEGIN_SRC ipython :session rc :results raw drawer
+  plt.figure(figsize=(10,5))
+  grid = plt.GridSpec(1, 2, hspace=0, wspace=0)
+  plt1 = plt.subplot(grid[0])
+
+  plt1.semilogy()
+  plt1.set_ylim(1, 5*10**4)
+  plt1.plot(ls, Dl, "0.5")
+  plt1.set_xlabel(r"$\ell$")
+  plt1.set_ylabel(r"$\frac{\ell(\ell+1)}{2\pi}\,C_\ell$ [$\mu$K$^2$]")
+
+  from copy import deepcopy
+  modes = {0: "threshold", 1: "baseline", 2: "goal"}
+  line = ["-", "--", "-.", ":"]
+  for k in modes.keys():
+        tmp = deepcopy(experiment)
+        tmp["sensitivity_mode_SO"] = k
+        freq_SO, DNl_array_SO = utils.get_noise(tmp, "SO")
+        for j, freq in enumerate(freq_SO):
+            if k == 0:
+                  label = "{} GHz".format(freq)
+            else:
+                  label = ""
+            plt1.plot(ls, DNl_array_SO[freq], linestyle=line[k], color="C{}".format(j), label=label)
+
+  for k, v in modes.items():
+      plt1.plot([], [], c="gray", ls=line[k], label=v)
+  plt1.legend(ncol=2)
+
+  plt2 = plt.subplot(grid[1])
+  plt2.semilogy()
+  plt2.set_ylim(1, 5*10**4)
+  plt2.set_yticklabels([])
+  plt2.plot(ls, Dl, "0.5")
+  plt2.set_xlabel(r"$\ell$")
+
+  import pickle
+  # Try with old computation
+  d = pickle.load(open("./data/so_noise_old.pkl", "rb"))
+  for j, f in enumerate(freq_SO):
+      plt2.plot(ls, d[f], "-C{}".format(j), label="{} GHz".format(f))
+
+  # # Try with new computation
+  d = pickle.load(open("./data/so_noise_new.pkl", "rb"))
+  for j, f in enumerate(freq_SO):
+      plt2.plot(ls, d[f], "--C{}".format(j))
+
+  plt2.plot([], [], c="gray", ls="-", label="old")
+  plt2.plot([], [], c="gray", ls="--", label="new")
+  plt2.legend(ncol=2)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[86]:
+: <matplotlib.legend.Legend at 0x7f3d5083cc50>
+[[file:./obipy-resources/IwtlSw.png]]
+:end:
+
+*** Comparison between old and new SO noise computation
+#+BEGIN_SRC ipython :session rc :results raw drawer
+  plt.semilogy()
+  plt.plot(ls, Dl, "0.5")
+  plt.ylabel(r"$\frac{\ell(\ell+1)}{2\pi}\,C_\ell$ [$\mu$K$^2$]")
+  plt.xlabel(r"$\ell$")
+
+  import pickle
+  # Try with old computation
+  d = pickle.load(open("so_noise_old.pkl", "rb"))
+  for j, f in enumerate(freq_SO):
+      plt.plot(ls, d[f], "-C{}".format(j), label="{} GHz".format(f))
+
+  # # Try with new computation
+  d = pickle.load(open("so_noise_new.pkl", "rb"))
+  for j, f in enumerate(freq_SO):
+      plt.plot(ls, d[f], "--C{}".format(j))
+
+  plt.plot([], [], c="gray", ls="-", label="old")
+  plt.plot([], [], c="gray", ls="--", label="new")
+  plt.legend(ncol=2)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[81]:
+: <matplotlib.legend.Legend at 0x7f3d6a057ef0>
+[[file:./obipy-resources/Ek0nvk.png]]
 :end:
 
 ** Compute covariance matrices
