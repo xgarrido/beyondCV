@@ -860,7 +860,7 @@ Fix likelihood definition by adding a 1/2 factor
 #+END_SRC
 
 #+RESULTS:
-:results:
+:resu!lts:
 # Out[354]:
 : <matplotlib.legend.Legend at 0x7f22de74b780>
 [[file:./obipy-resources/UTmCrn.png]]
@@ -994,7 +994,7 @@ Get Hessians from minimizations
 
 *** Triangle plot
 #+BEGIN_SRC ipython :session bcv :results none
-  def plot_samples(path, burnin=0.3, colors=None, scale=None, labels=labels, legend=None):
+  def plot_samples(path, burnin=0.3, colors=None, scale=None, delta=False, labels=None, renames=None, legend=None):
       samples = []
       the_colors = []
       all_files = []
@@ -1010,6 +1010,8 @@ Get Hessians from minimizations
           if scale:
               renorm = np.array(scale)/(w.dot(s)/np.sum(w))
               s *= renorm
+          if delta:
+              s -= np.mean(s, axis=0)
           survey = f.split("/")[-2]
           i = survey.split("_")[-1]
           survey = survey.split("_")[1]
@@ -1172,58 +1174,91 @@ Get Hessians from minimizations
 [[file:./obipy-resources/MIy2Oe.png]]
 :end:
 
-*** Triangle plot
+* Comparison with Planck 2018 results
+
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  ref = [67.5, 3.058, 0.9649, 0.02212, 0.1210, 1]
+  from getdist import loadMCSamples, plots, MCSamples
+
+  def get_mean_diffs(path, cols):
+      # Load MC Samples
+      tmp = loadMCSamples(path)
+
+      # Get mean diffs as arrays
+      mean_diffs = tmp.mean_diffs()
+
+      # Keep only interesting columns i.e. cosmo; parameters
+      mean_diffs = [mean_diffs[i] for i in cols]
+      return MCSamples(samples=mean_diffs, names=renames, ignore_rows=0.3)
+
+  # Variable names
+  renames = [r"$\Delta{}H_0~[\textrm{km/s}]$",
+             r"$\Delta\log(10^{10}A_\mathrm{s})$",
+             r"$\Delta{}n_\mathrm{s}$",
+             r"$\Delta\Omega_\mathrm{b}h^2$",
+             r"$\Delta\Omega_\mathrm{c}h^2$",
+             r"$\Delta\mathrm{A}_\mathrm{L}$"]
+
+  output_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output"
+
+  # Planck 2018
+  path = output_path + r"/COM_CosmoParams_fullGrid_R3.00/base_Alens/plikHM_TT_lowl_lowE/base_Alens_plikHM_TT_lowl_lowE"
+  cols = [22, 5, 6, 0, 1, 4]
+  samples = [get_mean_diffs(path, cols)]
+
+  # BeyondCV output
   mcmc_survey= ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
-  mcmc_nbr = ["0"]
-  paths = []
-  for f in mcmc_survey:
-    for g in mcmc_nbr:
-      paths += [result_path + "/*_{}_*{}/mcmc*.txt".format(f,g)]
-  colors = []
-  for i,_ in enumerate(mcmc_survey):
-      colors += len(mcmc_nbr)*["-C{}".format(i)]
-  plot_samples(path=paths, burnin=0.5, scale=ref, colors=colors, legend=mcmc_survey, labels=labels)
+  for survey in mcmc_survey:
+      path = output_path + r"/H0/results_{}_667_2/mcmc".format(survey)
+      samples += [get_mean_diffs(path, range(0,6))]
+
+  g = plots.getSubplotPlotter()
+  g.settings.lineM = ["--gray"] + ["-C{}".format(i) for i in range(len(mcmc_survey))]
+  g.triangle_plot(samples, legend_labels=[])
+  g.add_legend(["Planck 2018"] + mcmc_survey, colored_text=True, figure=True, align_right=True)
+  #  g.export("triangle_plot.pdf")
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[591]:
-: <getdist.plots.GetDistPlotter at 0x7f22d71fd630>
-[[file:./obipy-resources/YGYD6n.png]]
+# Out[26]:
+: <matplotlib.legend.Legend at 0x7f1a3aa32048>
+[[file:./obipy-resources/uIWWxm.png]]
 :end:
 
-*** Plot variances from MCMC
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  use_As = False
-  mcmc_nbr = ["2"]
-  mcmc = {}
+  import numpy as np
+  from getdist import loadMCSamples
+
+  # Variable names
+  xlabels = [r"$H_0$",
+             r"$\log(10^{10}A_\mathrm{s})$",
+             r"$n_\mathrm{s}$",
+             r"$\Omega_\mathrm{b}h^2$",
+             r"$\Omega_\mathrm{c}h^2$",
+             r"$\mathrm{A}_\mathrm{L}$"]
+
+  output_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output"
+
+  # Planck 2018
+  path = output_path + r"/COM_CosmoParams_fullGrid_R3.00/base_Alens/plikHM_TT_lowl_lowE/base_Alens_plikHM_TT_lowl_lowE"
+  cols = [22, 5, 6, 0, 1, 4]
+  planck2018 = np.array([loadMCSamples(path).getVars()[i] for i in cols])
+
+  # BeyondCV output
   surveys = ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
-  for survey in surveys:
-      mcmc_var = get_mcmc_variances(result_path + "/results*_{}_*{}/mcmc*.txt".format(survey, ",".join(mcmc_nbr)), burnin=0.3, keep_As=use_As)
-      if mcmc_var.size != 0:
-          mcmc_var = np.mean(np.array(mcmc_var[:, 1:], dtype=np.float), axis=0)
-          if use_As:
-              # Use As
-              mcmc_var[1] = mcmc_var[-1]; mcmc_var = mcmc_var[:-1]
-          mcmc[survey] = mcmc_var
-  xlabels = labels[:-2]
-  if use_As:
-      xlabels[1] = r"$A_\mathrm{s}$"
-
   x = np.arange(len(xlabels))
-  for i, survey in enumerate(surveys):
-      y = mcmc["PxP"]/mcmc[survey]
-      plt.plot(x, y, "o", label=survey, color="C{}".format(i))
-      plt.axhline(np.mean(y), color="C{}".format(i), ls="--", lw=1)
-
-  fisher = np.array([1.1685398799157372, 0.006836962297205166, 0.006080663682347812, 0.00022536977360943547, 0.0027340459518635477, 0.07147321760124377])
-  # plt.plot(x, mcmc["PxP"]/fisher, "ok", label="fisher")
+  for s, survey in enumerate(surveys):
+      path = output_path + r"/H0/results_{}_667_2/mcmc".format(survey)
+      a = np.array([loadMCSamples(path, settings={"ignore_rows": 0.3}).getVars()[i] for i in range(0,6)])
+      if s == 0:
+          pxp = planck2018 #a
+      y = np.sqrt(pxp/a)
+      plt.plot(x, y, "o", label=survey, color="C{}".format(s))
+      # plt.axhline(np.mean(y), color="C{}".format(s), ls="--", lw=1)
 
   plt.xticks(x, xlabels)
-  plt.ylabel(r"$\sigma{\rm(residuals)}/\sigma{\rm(Planck)}$", fontsize=14)
-  plt.ylim(0,)
+  plt.ylabel(r"$\sigma{\rm(Planck~2018)}/\sigma{\rm(residuals)}$")
+  plt.ylim(0,15)
   leg = plt.legend(loc="upper left", bbox_to_anchor=(1,1))
   for i, text in enumerate(leg.get_texts()):
     text.set_color("C{}".format(i))
@@ -1231,6 +1266,6 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[578]:
-[[file:./obipy-resources/53ujMY.png]]
+# Out[28]:
+[[file:./obipy-resources/bQVzse.png]]
 :end:
