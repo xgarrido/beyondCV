@@ -22,8 +22,16 @@ def get_noise(p, exp):
         from beyondCV import V3calc as V3
         freq_all = np.array(p["freq_all_%s"%exp])
         sensitivity_mode = p["sensitivity_mode_%s"%exp]
-        ell,N_ell_T_LA,N_ell_P_LA,Map_white_noise_levels \
-            = V3.so_V3_LA_noise(sensitivity_mode, p["fsky"], lmin, lmax, delta_ell=1, beam_corrected=True)
+        fsky = p["fsky"]
+        try:
+            ell,N_ell_T_LA,N_ell_P_LA,Map_white_noise_levels \
+                = V3.so_V3_LA_noise(sensitivity_mode, fsky, lmin, lmax, delta_ell=1, beam_corrected=True)
+        except:
+            try:
+                ell,N_ell_T_LA,N_ell_P_LA,Map_white_noise_levels \
+                    = V3.Simons_Observatory_V3_LA_noise(sensitivity_mode, fsky, lmin, lmax, delta_ell=1, apply_beam_correction=True)
+            except:
+                raise Exception("No Simons Observatory function to compute noise !")
         freq=np.array(p["freq_%s"%exp])
         DNl_array={}
         DNl_all=0
