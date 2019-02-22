@@ -13,9 +13,6 @@ def simulation(setup):
     lmin, lmax = experiment["lmin"], experiment["lmax"]
 
     from beyondCV import utils
-    simu = setup["simulation"]
-    cosmo = simu["cosmo. parameters"]
-
     Dltt = utils.get_theory_cls(setup, lmax)
     ls = np.arange(lmin, lmax)
     Dl = Dltt[lmin:lmax]
