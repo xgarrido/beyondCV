@@ -13,7 +13,7 @@ setup(name="beyondCV",
                      "Operating System :: OS Independent",
                      "Programming Language :: Python :: 2.7",
                      "Programming Language :: Python :: 3.7"],
-      install_requires = ["cobaya"],
+      install_requires = ["camb", "cobaya"],
       entry_points = {
         "console_scripts": ["beyondCV = beyondCV.beyondCV:main"],
       }
