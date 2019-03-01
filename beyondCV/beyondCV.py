@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Global
 import numpy as np
 
