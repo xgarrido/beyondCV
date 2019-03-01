@@ -1,12 +1,12 @@
 from setuptools import setup, find_packages
+from beyondCV import __author__, __version__, __url__
 
 setup(name="beyondCV",
-      version = "0.1",
+      version = __version__,
       packages = find_packages(),
       description = "Beyond cosmic variance",
-      url = "https://github.com/thibautlouis/beyondCV",
-      author = "Thibault Louis",
-      author_email = "thibault.louis@lal.in2p3.fr",
+      url = __url__,
+      author = __author__,
       keywords = ["CMB", "cosmic variance", "planck", "SO"],
       classifiers = ["Intended Audience :: Science/Research",
                      "Topic :: Scientific/Engineering :: Astronomy",
