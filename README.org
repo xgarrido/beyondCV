@@ -1,0 +1,107 @@
+#+TITLE: Consistency of CMB experiments beyond cosmic variance
+
+This repository provides the python module used in a forthcoming paper related to the comparison of
+past CMB experiment results, namely Planck 2018 results, with next generation CMB experiment such as
+the Simons Observatory (SO). This python module provides simulation and analysis programs if one
+wants to reproduce the analysis.
+
+* Installating the code
+** Using =pip=
+Installing the python module should be as easy as doing
+#+BEGIN_SRC shell
+  $ pip install git+https://github.com/xgarrido/beyondCV.git
+#+END_SRC
+if you are a =sudo= user or you can install it as a normal user by doing
+#+BEGIN_SRC shell
+  $ pip install --user git+https://github.com/xgarrido/beyondCV.git
+#+END_SRC
+
+If you plan to change things inside and/or to develop, you should first clone this repository or
+your fork with
+#+BEGIN_SRC shell
+  $ git clone https://github.com/xgarrido/beyondCV.git /where/to/store/beyondCV
+#+END_SRC
+You should then create a virtual environment to make sure your soft is properly encapsulated and is
+not polluted by third party softwares (such as another =camb= installation)
+#+BEGIN_SRC shell
+  $ python3 -m venv /where/to/put/you/virtual/env
+#+END_SRC
+and after having loaded your new virtual env.
+#+BEGIN_SRC shell
+  $ source /where/to/put/you/virtual/env/bin/activate
+#+END_SRC
+you should install this code in develop mode /i.e./
+#+BEGIN_SRC shell
+  $ pip install -e /where/to/store/beyondCV
+#+END_SRC
+
+** Using =docker=
+The following repository provides a =Dockerfile= that can be used to get a working environment with
+all properly installed. If you have =docker= installed and after having cloned this reposirtory to
+some place on your disk, you only have to build the image from within by doing
+#+BEGIN_SRC shell
+  $ docker build -t cmb/beyondCV /where/to/store/beyondCV
+#+END_SRC
+
+Running the =docker= image can be done
+#+BEGIN_SRC shell
+  $ docker run --rm -it cmb/beyondCV /bin/bash
+#+END_SRC
+it will open a =bash= prompt where the =beyondCV= binary and all its dependencies are accessible.
+
+* Running the code
+The executable file is named =beyondCV= and can be called from terminal
+#+BEGIN_SRC shell
+  $ beyondCV --help
+  usage: beyondCV [-h] -y YAML_FILE --survey
+                  {SOxSO,SOxP,PxP,SOxSO-PxP,SOxP-PxP,SOxP-SOxSO,SOxSO+PxP-2SOxP}
+                  [--seed-simulation SEED_SIMULATION]
+                  [--seed-sampling SEED_SAMPLING] [--do-minimization]
+                  [--do-mcmc] [--use-hessian-covmat] [--use-fisher-covmat]
+                  [--output-base-dir OUTPUT_BASE_DIR]
+
+  A python program to check experiment consistency beyond CMB cosmic variance
+
+  optional arguments:
+    -h, --help            show this help message and exit
+    -y YAML_FILE, --yaml-file YAML_FILE
+                          Yaml file holding sim/minization setup
+    --survey {SOxSO,SOxP,PxP,SOxSO-PxP,SOxP-PxP,SOxP-SOxSO,SOxSO+PxP-2SOxP}
+                          Set survey to be computed
+    --seed-simulation SEED_SIMULATION
+                          Set seed for the simulation random generator
+    --seed-sampling SEED_SAMPLING
+                          Set seed for the sampling random generator
+    --do-minimization     Use minimization sampler
+    --do-mcmc             Use MCMC sampler
+    --use-hessian-covmat  Use covariance matrix from minimization
+    --use-fisher-covmat   Use covariance matrix from Fisher calculation
+    --output-base-dir OUTPUT_BASE_DIR
+                          Set the output base dir where to store results
+#+END_SRC
+
+The =yaml= files holds the simulation configuration and the =cobaya= sampling setup. An example is
+provided within the repository with the default \Lambda{}CDM parameters used in this analysis.
+
+You must pass a =yaml= file + a survey /i.e./ a cross-correlation spectrum between Planck and SO. If you
+just pass this two options, you will only simulate the cross-correlated spectrum and get back a
+=pickle= file with spectrum and correlation matrix inside (as well as a copy of the input =yaml= file).
+
+If you want to minimize your survey spectrum over the cosmological parameters, you have to add the
+=--do-minimization= flag. Nevertheless, by default you will need the =iminuit= sampler code for such
+use. So far, this =cobaya= sampler is only available [[https://github.com/xgarrido/cobaya][here]] but we plan to submit it to =cobaya= team as
+soon as possible. So, you will have to install it by doing
+#+BEGIN_SRC shell
+  $ pip install git+https://github.com/xgarrido/cobaya.git
+#+END_SRC
+You can also use the default =cobaya= minimizer at your own risk as the [[https://cobaya.readthedocs.io/en/latest/sampler_minimize.html][documentation webpage]] tells.
+
+If you want to sample the cosmological parameters with a Monte-Carlo Markov Chain (MCMC), you can
+then use the default MCMC of =cobaya= by adding the =--do-mcmc= flag to your command line
+#+BEGIN_SRC shell
+  $ beyondCV -y beyondCV.yaml --survey PxP --do-mcmc --use-fisher-covmat
+#+END_SRC
+where =--use-fisher-covmat= line argument means the covariance matrix will be computed from Fisher
+method. You can also get the covariance matrix of the parameters by doing a minimization first and
+use the Hessian as proposal. The Hessian matrix may not always be reliable so using Fisher method is
+the recommended way.
