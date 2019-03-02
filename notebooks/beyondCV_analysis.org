@@ -1110,13 +1110,13 @@ Get Hessians from minimizations
 *** Check chains
 **** PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_PxP_*/mcmc*.txt", burnin=0.5, labels=labels)
+  plot_chains(result_path + "/*_PxP_*/mcmc*.txt", burnin=0, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[467]:
-[[file:./obipy-resources/lAIx2L.png]]
+# Out[50]:
+[[file:./obipy-resources/7FZWZg.png]]
 :end:
 
 **** SOxSO
@@ -1126,8 +1126,8 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[258]:
-[[file:./obipy-resources/nUB6G1.png]]
+# Out[51]:
+[[file:./obipy-resources/ntKLG2.png]]
 :end:
 
 **** SOxP
@@ -1137,41 +1137,51 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[259]:
-[[file:./obipy-resources/uk89xg.png]]
+# Out[52]:
+[[file:./obipy-resources/N2gQpa.png]]
 :end:
 
 **** SOxSO - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_SOxSO-PxP_*/mcmc*.txt", burnin=0.5, labels=labels)
+  plot_chains(result_path + "/*_SOxSO-PxP_*/mcmc*.txt", burnin=0, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[468]:
-[[file:./obipy-resources/PdjqiK.png]]
+# Out[53]:
+[[file:./obipy-resources/laW1CF.png]]
 :end:
 
 **** SOxP - PxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_SOxP-PxP*/mcmc*.txt", burnin=0.5, labels=labels)
+  plot_chains(result_path + "/*_SOxP-PxP*/mcmc*.txt", burnin=0, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[469]:
-[[file:./obipy-resources/T5RVzQ.png]]
+# Out[54]:
+[[file:./obipy-resources/xq6omq.png]]
 :end:
 
 **** SOxP - SOxSO
 #+BEGIN_SRC ipython :session bcv :results raw drawer
-  plot_chains(result_path + "/*_SOxP-SOxSO*/mcmc*.txt", burnin=0.5, labels=labels)
+  plot_chains(result_path + "/*_SOxP-SOxSO*/mcmc*.txt", burnin=0, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[470]:
-[[file:./obipy-resources/MIy2Oe.png]]
+# Out[55]:
+[[file:./obipy-resources/vNl2Lw.png]]
+:end:
+**** SOxSO + PxP - 2SOxP
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/*_SOxSO+PxP-2SOxP_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[56]:
+[[file:./obipy-resources/UjmnoG.png]]
 :end:
 
 * Comparison with Planck 2018 results
@@ -1180,6 +1190,13 @@ Get Hessians from minimizations
   from getdist import loadMCSamples, plots, MCSamples
 
   def get_mean_diffs(path, cols):
+      # Variable names
+      renames = [r"$\Delta{}H_0~[\textrm{km/s}]$",
+                 r"$\log(10^{10}A_\mathrm{s})$",
+                 r"$\Delta{}n_\mathrm{s}$",
+                 r"$\Delta\Omega_\mathrm{b}h^2$",
+                 r"$\Delta\Omega_\mathrm{c}h^2$",
+                 r"$\Delta\mathrm{A}_\mathrm{L}$"]
       # Load MC Samples
       tmp = loadMCSamples(path)
 
@@ -1190,13 +1207,6 @@ Get Hessians from minimizations
       mean_diffs = [mean_diffs[i] for i in cols]
       return MCSamples(samples=mean_diffs, names=renames, ignore_rows=0.3)
 
-  # Variable names
-  renames = [r"$\Delta{}H_0~[\textrm{km/s}]$",
-             r"$\Delta\log(10^{10}A_\mathrm{s})$",
-             r"$\Delta{}n_\mathrm{s}$",
-             r"$\Delta\Omega_\mathrm{b}h^2$",
-             r"$\Delta\Omega_\mathrm{c}h^2$",
-             r"$\Delta\mathrm{A}_\mathrm{L}$"]
 
   output_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output"
 
@@ -1207,12 +1217,13 @@ Get Hessians from minimizations
 
   # BeyondCV output
   mcmc_survey= ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  cols = range(0,6)
   for survey in mcmc_survey:
-      path = output_path + r"/H0/results_{}_667_2/mcmc".format(survey)
-      samples += [get_mean_diffs(path, range(0,6))]
+      path = output_path + r"/H0_old/results_{}_667_2/mcmc".format(survey)
+      samples += [get_mean_diffs(path, cols)]
 
   g = plots.getSubplotPlotter()
-  g.settings.lineM = ["--gray"] + ["-C{}".format(i) for i in range(len(mcmc_survey))]
+  g.settings.lineM = ["--gray"] + ["-C{}".format(i) for i in range(10)]
   g.triangle_plot(samples, legend_labels=[])
   g.add_legend(["Planck 2018"] + mcmc_survey, colored_text=True, figure=True, align_right=True)
   #  g.export("triangle_plot.pdf")
@@ -1220,9 +1231,9 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[26]:
-: <matplotlib.legend.Legend at 0x7f1a3aa32048>
-[[file:./obipy-resources/uIWWxm.png]]
+# Out[68]:
+: <matplotlib.legend.Legend at 0x7f1a3663eda0>
+[[file:./obipy-resources/UGso8L.png]]
 :end:
 
 #+BEGIN_SRC ipython :session bcv :results raw drawer
@@ -1248,7 +1259,7 @@ Get Hessians from minimizations
   surveys = ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
   x = np.arange(len(xlabels))
   for s, survey in enumerate(surveys):
-      path = output_path + r"/H0/results_{}_667_2/mcmc".format(survey)
+      path = output_path + r"/H0_old/results_{}_667_2/mcmc".format(survey)
       a = np.array([loadMCSamples(path, settings={"ignore_rows": 0.3}).getVars()[i] for i in range(0,6)])
       if s == 0:
           pxp = planck2018 #a
@@ -1266,6 +1277,105 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[28]:
-[[file:./obipy-resources/bQVzse.png]]
+# Out[58]:
+[[file:./obipy-resources/ZhSeJj.png]]
+:end:
+
+** Comparison between different SO sensitivity mode
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  from getdist import loadMCSamples, plots, MCSamples
+
+  def get_mean_diffs(path, cols):
+      # Variable names
+      renames = [r"$\Delta{}H_0~[\textrm{km/s}]$",
+                 r"$\Delta{}n_\mathrm{s}$",
+                 r"$\Delta\Omega_\mathrm{b}h^2$",
+                 r"$\Delta\Omega_\mathrm{c}h^2$",
+                 r"$\Delta\mathrm{A}_\mathrm{L}$"]
+      # Load MC Samples
+      tmp = loadMCSamples(path)
+
+      # Get mean diffs as arrays
+      mean_diffs = tmp.mean_diffs()
+
+      # Keep only interesting columns i.e. cosmo; parameters
+      mean_diffs = [mean_diffs[i] for i in cols]
+      return MCSamples(samples=mean_diffs, names=renames, ignore_rows=0.3)
+
+
+  output_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output"
+
+  # Planck 2018
+  path = output_path + r"/COM_CosmoParams_fullGrid_R3.00/base_Alens/plikHM_TT_lowl_lowE/base_Alens_plikHM_TT_lowl_lowE"
+  # cols = [22, 5, 6, 0, 1, 4]
+  cols = [22, 6, 0, 1, 4]
+  samples = [get_mean_diffs(path, cols)]
+
+  # BeyondCV output
+  mcmc_survey= ["SOxSO-PxP"]#, "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  cols = [0, 2, 3, 4, 5]
+  for survey in mcmc_survey:
+      path = output_path + r"/H0_old/results_{}_667_2/mcmc".format(survey)
+      samples += [get_mean_diffs(path, cols)]
+
+  for survey in mcmc_survey:
+      path = output_path + r"/H0/results_{}_666_4/mcmc".format(survey)
+      samples += [get_mean_diffs(path, cols)]
+
+  g = plots.getSubplotPlotter()
+  g.settings.lineM = ["--gray", "-C2", "--C2"]
+  g.triangle_plot(samples, legend_labels=[])
+  g.add_legend(["Planck 2018", r"{} ($\ell\in[2;3000]$)".format(mcmc_survey[0]), r"{} ($\ell\in[50; 2000]$)".format(mcmc_survey[0])], colored_text=False, figure=True, align_right=True)
+  #  g.export("triangle_plot.pdf")
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[78]:
+: <matplotlib.legend.Legend at 0x7f1a2fdcd828>
+[[file:./obipy-resources/BrNUzq.png]]
+:end:
+
+#+BEGIN_SRC ipython :session bcv :results raw drawer
+  import numpy as np
+  from getdist import loadMCSamples
+
+  # Variable names
+  xlabels = [r"$H_0$",
+             r"$n_\mathrm{s}$",
+             r"$\Omega_\mathrm{b}h^2$",
+             r"$\Omega_\mathrm{c}h^2$",
+             r"$\mathrm{A}_\mathrm{L}$"]
+
+  output_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output"
+
+  # Planck 2018
+  path = output_path + r"/COM_CosmoParams_fullGrid_R3.00/base_Alens/plikHM_TT_lowl_lowE/base_Alens_plikHM_TT_lowl_lowE"
+  cols = [22, 6, 0, 1, 4]
+  planck2018 = np.array([loadMCSamples(path).getVars()[i] for i in cols])
+
+  # BeyondCV output
+  surveys = ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  x = np.arange(len(xlabels))
+  for s, survey in enumerate(surveys):
+      path = output_path + r"/H0/results_{}_666_2/mcmc".format(survey)
+      a = np.array([loadMCSamples(path, settings={"ignore_rows": 0.3}).getVars()[i] for i in [0, 2, 3, 4, 5]])
+      if s == 0:
+          pxp = planck2018 #a
+      y = np.sqrt(pxp/a)
+      plt.plot(x, y, "o", label=survey, color="C{}".format(s))
+      # plt.axhline(np.mean(y), color="C{}".format(s), ls="--", lw=1)
+
+  plt.xticks(x, xlabels)
+  plt.ylabel(r"$\sigma{\rm(Planck~2018)}/\sigma{\rm(residuals)}$")
+  plt.ylim(0,15)
+  leg = plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+  for i, text in enumerate(leg.get_texts()):
+      text.set_color("C{}".format(i))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[80]:
+[[file:./obipy-resources/wAYAmu.png]]
 :end:
