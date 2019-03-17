@@ -150,7 +150,7 @@ def store(setup):
 # Main function:
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description = "A python program to check experiment consistency beyond CMB cosmic variance")
+    parser = argparse.ArgumentParser(description="A python program to check experiment consistency beyond CMB cosmic variance")
     parser.add_argument("-y", "--yaml-file", help="Yaml file holding sim/minization setup",
                         default=None, required=True)
     parser.add_argument("--survey", help="Set survey to be computed",
