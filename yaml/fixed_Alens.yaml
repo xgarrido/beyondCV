@@ -2,7 +2,8 @@
 simulation:
   cosmo. parameters:
     # Planck 2018
-    H0            : 67.36 # km/s
+    cosmomc_theta : 0.0104164
+    # H0            : 67.36 # km/s
     logA          : 3.044
     ombh2         : 0.02237
     omch2         : 0.1200
@@ -15,7 +16,7 @@ simulation:
 
 experiment:
   lmin : 50
-  lmax : 2000
+  lmax : 1500
   fsky : 0.4
 
   survey:
@@ -28,7 +29,7 @@ experiment:
 
   freq_all_SO: [27, 39, 93, 145, 225, 280] # GHz
   freq_SO: [93, 145, 225] # GHz
-  sensitivity_mode_SO: 1 #  0: threshold, 1: baseline, 2: goal
+  sensitivity_mode_SO: 2 #  0: threshold, 1: baseline, 2: goal
 
 # Cobaya setup
 cobaya:
@@ -42,6 +43,7 @@ cobaya:
     mnu   : *mnu
     omk   : *omk
     r     : *r
+    Alens : *Alens
     # Sampled
     H0:
       prior:
@@ -66,10 +68,6 @@ cobaya:
       prior:
         min: 0.09
         max: 0.15
-    Alens:
-      prior:
-        min: 0.5
-        max: 1.5
 
   theory:
     camb:
