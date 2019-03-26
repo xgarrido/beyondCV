@@ -99,7 +99,7 @@ You can also use the default =cobaya= minimizer at your own risk as the [[https:
 If you want to sample the cosmological parameters with a Monte-Carlo Markov Chain (MCMC), you can
 then use the default MCMC of =cobaya= by adding the =--do-mcmc= flag to your command line
 #+BEGIN_SRC shell
-  $ beyondCV -y beyondCV.yaml --survey PxP --do-mcmc --use-fisher-covmat
+  $ beyondCV -y yaml/default.yaml --survey PxP --do-mcmc --use-fisher-covmat
 #+END_SRC
 where =--use-fisher-covmat= line argument means the covariance matrix will be computed from Fisher
 method. You can also get the covariance matrix of the parameters by doing a minimization first and
