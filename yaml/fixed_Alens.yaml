@@ -45,10 +45,10 @@ cobaya:
     r     : *r
     Alens : *Alens
     # Sampled
-    H0:
+    cosmomc_theta:
       prior:
-        min: 60
-        max: 75
+        min: 0.0103
+        max: 0.0105
     logA:
       prior:
         min: 3.0
