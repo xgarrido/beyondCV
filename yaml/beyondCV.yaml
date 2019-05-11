@@ -2,7 +2,8 @@
 simulation:
   cosmo. parameters:
     # Planck 2018
-    H0            : 67.36 # km/s
+    # H0            : 67.36 # km/s
+    cosmomc_theta : 0.0104085
     logA          : 3.044
     ombh2         : 0.02237
     omch2         : 0.1200
@@ -15,7 +16,7 @@ simulation:
 
 experiment:
   lmin : 50
-  lmax : 500
+  lmax : 3000
   fsky : 0.4
 
   survey:
@@ -43,10 +44,10 @@ cobaya:
     omk   : *omk
     r     : *r
     # Sampled
-    H0:
+    cosmomc_theta:
       prior:
-        min: 60
-        max: 75
+        min: 0.0103
+        max: 0.0105
     logA:
       prior:
         min: 3.0
@@ -70,6 +71,8 @@ cobaya:
       prior:
         min: 0.5
         max: 1.5
+    # Derived
+    H0:
 
   theory:
     camb:

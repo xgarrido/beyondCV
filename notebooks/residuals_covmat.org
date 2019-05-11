@@ -2,7 +2,7 @@
 
 * Emacs config                                                     :noexport:
 #+BEGIN_SRC elisp :session rc :results none
-  (pyvenv-workon "beyondCV")
+  (pyvenv-workon "notebooks-0JyJdPiH")
 #+END_SRC
 
 * Estimation of standard deviation of CMB spectra residuals
@@ -46,7 +46,7 @@
 #+BEGIN_SRC ipython :session rc :results none
   import yaml
   with open("../beyondCV.yaml", "r") as stream:
-      setup = yaml.load(stream)
+      setup = yaml.load(stream, Loader=yaml.FullLoader)
 #+END_SRC
 
 ** Generation of CMB spectrum
@@ -75,9 +75,9 @@ Plot CMB spectrum
 
 #+RESULTS:
 :results:
-# Out[77]:
+# Out[5]:
 : Text(0, 0.5, '$\\frac{\\ell(\\ell+1)}{2\\pi}\\,C_\\ell$ [$\\mu$K$^2$]')
-[[file:./obipy-resources/wGVigN.png]]
+[[file:./obipy-resources/IHbXHe.png]]
 :end:
 
 ** Get noise from experiment
@@ -118,9 +118,9 @@ Plot the experiment noise for Planck and Simons Observatory
 
 #+RESULTS:
 :results:
-# Out[78]:
-: <matplotlib.legend.Legend at 0x7f3d520d7908>
-[[file:./obipy-resources/y5O9SE.png]]
+# Out[6]:
+: <matplotlib.legend.Legend at 0x7fe70dc459b0>
+[[file:./obipy-resources/32SWXP.png]]
 :end:
 
 *** Check difference between SO sensitivity modes using old SO file
@@ -215,6 +215,18 @@ Plot the experiment noise for Planck and Simons Observatory
 
 ** Compute covariance matrices
 #+BEGIN_SRC ipython :session rc :results none
+  ns = {}
+  DNl = {}
+  for freq in freq_Planck:
+      key = "Planck_%s" % freq
+      ns[key] = 2.
+      DNl[key] = DNl_array_Planck[freq]*ns[key]
+
+  for freq in freq_SO:
+      key = "SO_%s" % freq
+      ns[key] = 10.
+      DNl[key] = DNl_array_SO[freq]*ns[key]
+
   fsky = experiment["fsky"]
   covmat_SSSS = utils.cov("SO_all", "SO_all", "SO_all", "SO_all", ns, ls, Dl, DNl, fsky)
   covmat_SSSP = utils.cov("SO_all", "SO_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
@@ -254,9 +266,9 @@ Plot the =covmat=
 
 #+RESULTS:
 :results:
-# Out[14]:
-: <matplotlib.legend.Legend at 0x7f14a6f72f60>
-[[file:./obipy-resources/Wgp7rG.png]]
+# Out[10]:
+: <matplotlib.legend.Legend at 0x7fe70c4b9e80>
+[[file:./obipy-resources/5me71H.png]]
 :end:
 
 ** Compute the covariance of the residuals
@@ -294,10 +306,42 @@ Plot covariances
 
 #+RESULTS:
 :results:
-# Out[33]:
-: <matplotlib.legend.Legend at 0x7f14772bcc50>
-[[file:./obipy-resources/tdgfN3.png]]
+# Out[15]:
+: <matplotlib.legend.Legend at 0x7fe707416710>
+[[file:./obipy-resources/PNhz0s.png]]
 :end:
+
+#+BEGIN_SRC ipython :session rc :results raw drawer
+  def C5(a=1, b=1):
+      c = -(a+b)
+      C5 = a**2*(covmat_SSSS + covmat_SPSP -2*covmat_SSSP) \
+          + b**2*(covmat_PPPP + covmat_SPSP - 2*covmat_SPPP) \
+          + 2*a*b*(covmat_SPSP + covmat_SSPP - covmat_SSSP - covmat_SPPP)
+      return C5
+
+  plt.semilogy()
+  plt.plot(ls, covmat_PPPP, label=r"$\Xi^{\sf PxP,PxP}$")
+  plt.plot(ls, covmat_SSSS, label=r"$\Xi^{\sf SOxSO,SOxSO}$")
+  # plt.plot(ls, C1, color="0.5", linestyle="dashed", label=r"$\mathcal{C}_1$ (SOxSO - PxP)")
+  # plt.plot(ls, C2, color="0.5", linestyle="dotted", label=r"$\mathcal{C}_2$ (SOxP - PxP)")
+  plt.plot(ls, C3, color="0.5", linestyle="dashdot", label=r"$\mathcal{C}_3$ (SOxSO - SOxP)")
+  plt.plot(ls, C4, color="k",   linestyle="dashed", label=r"$\mathcal{C}_4$")
+  # for a in np.arange(0, 1, 0.05):
+  #     for b in np.arange(0, 1, 0.05):
+  plt.plot(ls, C5(0.5, 0.1), color="r", linestyle="dashed")
+  plt.ylim(0.1, 1e9)
+  plt.xlabel(r"$\ell$")
+  plt.ylabel(r"$\frac{\ell(\ell+1)}{2\pi}\Xi^{\alpha\times\beta,\gamma\times\eta}_\ell$ [$\mu$K$^4$]")
+  plt.legend()
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[35]:
+: <matplotlib.legend.Legend at 0x7fe703b69128>
+[[file:./obipy-resources/jmqcEc.png]]
+:end:
+
 
 #+BEGIN_SRC ipython :session rc :results raw drawer
   np.mean(C1/C2)

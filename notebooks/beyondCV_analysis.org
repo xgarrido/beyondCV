@@ -4,7 +4,7 @@
 #+BEGIN_SRC ipython :session bcv :results none
   %matplotlib inline
   import matplotlib.pyplot as plt
-  plt.rcParams["text.usetex"] = True
+  # plt.rcParams["text.usetex"] = True
   import pandas as pd
   import numpy as np
   from getdist import plots, MCSamples
@@ -45,8 +45,7 @@
       # Insert Delta chi2 before As (which is derived and never plot)
       df.insert(value=delta_chi2, column="delta_chi2", loc=len(df.columns))
 
-      params = np.array(df)
-      return params
+      return np.array(df)
 #+END_SRC
 
 ** Show input values of cosmo. parameters
@@ -410,36 +409,661 @@ Set PxP deviation as standard for further comparison
 | $\sigma$(SOxSO + PxP - 2 SOxP) |          8.42738e-07 |    3.20894e-12 |     0.00141523 |            4.80156e-05 |            0.000616931 |                      9.56108 |
 
 ** Correlation of parameters
-#+BEGIN_SRC ipython :session bcv :results raw drawer
-  def get_corrcoef(lmin=50, lmax=3000, nvar=5):
-      params_SO = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_{}_{}".format(lmin, lmax), "*SO.likelihood")
-      params_P  = get_params(r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/ell_{}_{}".format(lmin, lmax), "*_P.likelihood")
+*** Correlation between experiments PxP, SOxSO
+#+BEGIN_SRC ipython :session :results none
+  import matplotlib.pyplot as plt
+  import pandas as pd
+  import numpy as np
 
-      corrcoef = np.empty(nvar)
-      for i in range(nvar):
-          SO, P = params_SO[:,i], params_P[:,i]
-          corrcoef[i] = np.corrcoef(SO, P)[0, 1]
-      return corrcoef
+  def get_params(path, pattern="*.likelihood"):
+      import os, glob
+      all_files = glob.glob(os.path.join(path, pattern))
+      # Sort alphabetically
+      all_files.sort()
 
-  x = np.arange(5)
-  plt.plot(x, get_corrcoef(50, 1500), "o", label=r"$\ell\in[50; 1500]$")
-  plt.plot(x, get_corrcoef(50, 2000), "o", label=r"$\ell\in[50; 2000]$")
-  plt.plot(x, get_corrcoef( 2, 3000), "o", label=r"$\ell\in[2; 3000]$")
+      header = pd.read_csv(all_files[0], delim_whitespace=True).columns[1:]
+      df = pd.concat((pd.read_table(f, delim_whitespace=True) for f in all_files))
 
-  plt.xticks(x, labels[:-1])
+      # Remove '#' in header
+      df.drop(df.columns[[-1,]], axis=1, inplace=True)
+      df.columns = header
+      # Compute delta chi2
+      delta_chi2 = df.chi2-np.min(df.chi2)
+      # Remove useless columns
+      df.drop(columns=["weight", "minuslogpost", "minuslogprior", "minuslogprior__0", "chi2", "chi2__chi2"], inplace=True)
+      # Insert Delta chi2 before As (which is derived and never plot)
+      df.insert(value=delta_chi2, column="delta_chi2", loc=len(df.columns))
+
+      return np.array(df)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :results none
+  # Get data
+  lmin = 50
+  lmaxs = [750, 1500, 3000]#, 3000]
+  params_SO = {}
+  params_P = {}
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/correlation_matrix/"
+  for i, lmax in enumerate(lmaxs):
+      params_SO[lmax] = get_params(output_base + "results_lmin{}_lmax{}_SOxSO_*".format(lmin, lmax), "*.likelihood")
+      params_P[lmax]  = get_params(output_base + "results_lmin{}_lmax{}_PxP_*".format(lmin, lmax), "*.likelihood")
+      print("lmax = ", lmax, params_P[lmax].shape, params_SO[lmax].shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :results none
+  def get_corrcoef(params1, params2, cols=None, split=False, nsplit=100):
+      n = len(cols)
+      if split:
+          split1 = np.array_split(params1, nsplit)
+          split2 = np.array_split(params2, nsplit)
+          corrcoef = np.empty((nsplit, n))
+          for i in range(nsplit):
+              for j in range(n):
+                  P1, P2 = split1[i][:,cols[j]], split2[i][:,cols[j]]
+                  corrcoef[i, j] = np.corrcoef(P1, P2)[0, 1]
+          return np.mean(corrcoef, axis=0), np.std(corrcoef, axis=0)/np.sqrt(nsplit)
+      else:
+          corrcoef = np.empty(n)
+          for i in range(n):
+              P1, P2 = params1[:,cols[i]], params2[:,cols[i]]
+              corrcoef[i] = np.corrcoef(P1, P2)[0, 1]
+          return corrcoef
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  labels = [r"$\theta_{\rm MC}$",
+            r"$\log(10^{10}A_\mathrm{s})$",
+            r"$n_\mathrm{s}$",
+            r"$\Omega_\mathrm{b}h^2$",
+            r"$\Omega_\mathrm{c}h^2$",
+            r"$\mathrm{A}_\mathrm{L}$",
+            r"$A_S$",
+            r"$H_0$"]
+  cols = [7, 1, 2, 3, 4, 5, 0]
+  n = len(cols)
+
+  def plot_multiple_correlation(params1, params2, x, col2colors):
+      n = params1.shape[1]
+      Rxx = np.corrcoef(params1, rowvar=False)
+      c = np.corrcoef(params1, params2, rowvar=False)
+      c = c[:n, n:]
+
+      R2 = (c.T).dot(np.linalg.inv(Rxx)).dot(c)
+      R = np.sqrt(R2.diagonal())
+      for i in range(n):
+          plt.plot(x, R[i], "-o", color="C{}".format(col2colors[i]))
+
+
+  split = False
+  multiple_correlation = False
+  if split:
+      corr_coeff_means = np.empty((np.alen(lmaxs), n))
+      corr_coeff_errs = np.empty((np.alen(lmaxs), n))
+      for i, lmax in enumerate(lmaxs):
+          corr_coeff_mean, corr_coeff_err = get_corrcoef(params_SO[lmax], params_P[lmax], cols=cols, split=split)
+          corr_coeff_means[i] = corr_coeff_mean
+          corr_coeff_errs[i] = corr_coeff_err
+  else:
+      corr_coeffs = np.empty((np.alen(lmaxs), n))
+      for i, lmax in enumerate(lmaxs):
+          if multiple_correlation:
+              Rxx = np.corrcoef(params_P[lmax], rowvar=False)
+              c = np.corrcoef(params_P[lmax], params_SO[lmax], rowvar=False)
+              c = c[:Rxx.shape[0], Rxx.shape[0]:]
+
+              R2 = (c.T).dot(np.linalg.inv(Rxx)).dot(c)
+              R = np.sqrt(R2.diagonal())
+              for j, c in enumerate(cols):
+                  corr_coeffs[i, j] = R[c]
+          else:
+              corr_coeff = get_corrcoef(params_P[lmax], params_SO[lmax], cols=cols, split=split)
+              corr_coeffs[i] = corr_coeff
+
+  for i in range(n):
+      if split:
+          plt.errorbar(lmaxs, corr_coeff_means[:, i], yerr=corr_coeff_errs[:, i], fmt="-o", label=labels[cols[i]])
+      else:
+          plt.plot(lmaxs, corr_coeffs[:, i], "-o", label=labels[cols[i]])
+
+  plt.xlabel(r"$\ell_{\rm max}$")
   plt.ylabel(r"$R_{xy}$")
   plt.legend(loc="upper left", bbox_to_anchor=(1,1))
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[59]:
-: <matplotlib.legend.Legend at 0x7f8c5c4c77b8>
-[[file:./obipy-resources/cK6vL9.png]]
+# Out[75]:
+: <matplotlib.legend.Legend at 0x7f687e2c2240>
+[[file:./obipy-resources/nWIOqw.png]]
+:end:
+
+Simulation corrélées
+
+#+RESULTS:
+:results:
+# Out[35]:
+: <matplotlib.legend.Legend at 0x7f3210aebf98>
+[[file:./obipy-resources/3yEhy0.png]]
+:end:
+
+*** Correlation between PxP and SOxSO regarding \theta_{MC} /vs./ H_0 /vs./ Alens
+**** Simple correlation
+#+BEGIN_SRC ipython :session :results none
+  def plot_corrcoeff(params1, params2, col2colors, split=True, lmax=1500):
+    n = len(col2colors.keys())
+    if split:
+        corr_coeff_means = np.empty(n)
+        corr_coeff_errs = np.empty(n)
+        corr_coeff_mean, corr_coeff_err = get_corrcoef(params1, params2,
+                                                       cols=list(col2colors.keys()), split=split)
+        corr_coeff_means = corr_coeff_mean
+        corr_coeff_errs = corr_coeff_err
+    else:
+        corr_coeffs = np.empty(n)
+        corr_coeff = get_corrcoef(params1, params2,
+                                  cols=list(col2colors.keys()), split=split)
+        corr_coeffs = corr_coeff
+
+    print(corr_coeff_means, corr_coeff_errs)
+
+    for i in range(n):
+        if split:
+            plt.errorbar(lmax, corr_coeff_means[i], yerr=corr_coeff_errs[i], fmt="-o", color="C{}".format(col2colors[i]))
+        else:
+            plt.plot(lmax, corr_coeffs[i], "-o", color="C{}".format(col2colors[i]))
+
+    # plt.xlabel(r"$\ell_{\rm max}$")
+    plt.ylabel(r"$R_{xy}$")
+#+END_SRC
+
+Get cosmological parameters
+#+BEGIN_SRC ipython :session :results none
+  lmin = 50
+  lmax = 1500
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/coeff_corr_fixAlens/"
+  params_P_thetaMC_fixAlens = get_params(output_base + "results_lmin{}_lmax{}_PxP_*".format(lmin, lmax), "*.likelihood")
+  params_SO_thetaMC_fixAlens = get_params(output_base + "results_lmin{}_lmax{}_SOxSO_*".format(lmin, lmax), "*.likelihood")
+  print(params_P_thetaMC_fixAlens.shape, params_SO_thetaMC_fixAlens.shape)
+
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/coeff_corr_thetaMC+Alens/"
+  params_P_thetaMC_Alens = get_params(output_base + "results_lmin{}_lmax{}_PxP_*".format(lmin, lmax), "*.likelihood")
+  params_SO_thetaMC_Alens = get_params(output_base + "results_lmin{}_lmax{}_SOxSO_*".format(lmin, lmax), "*.likelihood")
+  print(params_P_thetaMC_Alens.shape, params_SO_thetaMC_Alens.shape)
+
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/coeff_corr_fixAlens_H0/"
+  params_P_H0_fixAlens = get_params(output_base + "results_lmin{}_lmax{}_PxP_*".format(lmin, lmax), "*.likelihood")
+  params_SO_H0_fixAlens = get_params(output_base + "results_lmin{}_lmax{}_SOxSO_*".format(lmin, lmax), "*.likelihood")
+  print(params_P_H0_fixAlens.shape, params_SO_H0_fixAlens.shape)
+
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/coeff_corr_H0+Alens/"
+  params_P_H0_Alens = get_params(output_base + "results_lmin{}_lmax{}_PxP_*".format(lmin, lmax), "*.likelihood")
+  params_SO_H0_Alens = get_params(output_base + "results_lmin{}_lmax{}_SOxSO_*".format(lmin, lmax), "*.likelihood")
+  print(params_P_H0_Alens.shape, params_SO_H0_Alens.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  labels = [r"$\theta_{\rm MC}$",
+            r"$\log(10^{10}A_\mathrm{s})$",
+            r"$n_\mathrm{s}$",
+            r"$\Omega_\mathrm{b}h^2$",
+            r"$\Omega_\mathrm{c}h^2$",
+            r"$H_0$",
+            r"$\mathrm{A}_\mathrm{L}$",
+            r"$A_S$"]
+
+  split=True
+
+  cols2colors = {0:0, 1:1, 2:2, 3:3, 4:4}
+  plot_corrcoeff(params_SO_thetaMC_fixAlens, params_P_thetaMC_fixAlens, cols2colors, lmax=1, split=split)
+
+  cols2colors = {0:0, 1:1, 2:2, 3:3, 4:4, 5:6}
+  plot_corrcoeff(params_SO_thetaMC_Alens, params_P_thetaMC_Alens, cols2colors, lmax=2, split=split)
+
+  cols2colors = {0:5, 1:1, 2:2, 3:3, 4:4}
+  plot_corrcoeff(params_SO_H0_fixAlens, params_P_H0_fixAlens, cols2colors, lmax=3, split=split)
+
+  cols2colors = {0:5, 1:1, 2:2, 3:3, 4:4, 5:6}
+  plot_corrcoeff(params_SO_H0_Alens, params_P_H0_Alens, cols2colors, lmax=4, split=split)
+
+  plt.xticks([1, 2, 3, 4],
+             [r"$\theta_{\rm MC}$ + fix $\mathrm{A}_\mathrm{L}$",
+              r"$\theta_{\rm MC} + \mathrm{A}_\mathrm{L}$",
+              r"$H_0$ + fix $\mathrm{A}_\mathrm{L}$",
+              r"$H_0 + \mathrm{A}_\mathrm{L}$"])
+
+  for i in labels[:-1]:
+    plt.plot([], [], "o", label=i)
+  plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[105]:
+: <matplotlib.legend.Legend at 0x7ff8981a1048>
+[[file:./obipy-resources/V11SKw.png]]
+:end:
+
+**** Multiple correlation
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  def plot_multiple_correlation(params1, params2, x, col2colors):
+      n = params1.shape[1]
+      Rxx = np.corrcoef(params1, rowvar=False)
+      c = np.corrcoef(params1, params2, rowvar=False)
+      c = c[:n, n:]
+
+      R2 = (c.T).dot(np.linalg.inv(Rxx)).dot(c)
+      R = np.sqrt(R2.diagonal())
+      for i in range(n):
+          plt.plot(x, R[i], "-o", color="C{}".format(col2colors[i]))
+
+  cols2colors = {0:0, 1:1, 2:2, 3:3, 4:4}
+  plot_multiple_correlation(params_P_thetaMC_fixAlens[:, :5], params_SO_thetaMC_fixAlens[: ,:5], 1, cols2colors)
+
+  cols2colors = {0:0, 1:1, 2:2, 3:3, 4:4, 5:6}
+  plot_multiple_correlation(params_P_thetaMC_Alens[:, :6], params_SO_thetaMC_Alens[:, :6], 2, cols2colors)
+
+  cols2colors = {0:5, 1:1, 2:2, 3:3, 4:4}
+  plot_multiple_correlation(params_P_H0_fixAlens[:, :5], params_SO_H0_fixAlens[:, :5], 3, cols2colors)
+
+  cols2colors = {0:5, 1:1, 2:2, 3:3, 4:4, 5:6}
+  plot_multiple_correlation(params_P_H0_Alens[:, :6], params_SO_H0_Alens[:, :6], 4, cols2colors)
+
+  labels = [r"$\theta_{\rm MC}$",
+            r"$\log(10^{10}A_\mathrm{s})$",
+            r"$n_\mathrm{s}$",
+            r"$\Omega_\mathrm{b}h^2$",
+            r"$\Omega_\mathrm{c}h^2$",
+            r"$H_0$",
+            r"$\mathrm{A}_\mathrm{L}$",
+            r"$A_S$"]
+  plt.xticks([1, 2, 3, 4],
+             [r"$\theta_{\rm MC}$ + fix $\mathrm{A}_\mathrm{L}$",
+              r"$\theta_{\rm MC} + \mathrm{A}_\mathrm{L}$",
+              r"$H_0$ + fix $\mathrm{A}_\mathrm{L}$",
+              r"$H_0 + \mathrm{A}_\mathrm{L}$"])
+
+  for i in labels[:-1]:
+    plt.plot([], [], "o", label=i)
+  plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[160]:
+: <matplotlib.legend.Legend at 0x7ff89305b748>
+[[file:./obipy-resources/D8TWbr.png]]
+:end:
+
+**** Check \chi^2 distribution for 10 simulations
+#+BEGIN_SRC ipython :session :results raw drawer
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/minimize_thetaMC+fixAlens/"
+  chi2_P_thetaMC_fixAlens = get_params(output_base + "results_PxP_*", "*.likelihood")[:, -1]
+
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/minimize_thetaMC+Alens/"
+  chi2_P_thetaMC_Alens = get_params(output_base + "results_PxP_*", "*.likelihood")[:, -1]
+  chi2_P_thetaMC_Alens = chi2_P_thetaMC_Alens[chi2_P_thetaMC_Alens < 5]
+
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/minimize_H0+fixAlens/"
+  chi2_P_H0_fixAlens = get_params(output_base + "results_PxP_*", "*.likelihood")[:,-1]
+
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/minimize_H0+Alens/"
+  chi2_P_H0_Alens = get_params(output_base + "results_PxP_*", "*.likelihood")[:,-1]
+
+  print(chi2_P_thetaMC_fixAlens.shape)
+  print(chi2_P_thetaMC_Alens.shape)
+  print(chi2_P_H0_fixAlens.shape)
+  print(chi2_P_H0_Alens.shape)
+
+  plt.plot(np.full_like(chi2_P_thetaMC_fixAlens, 1), chi2_P_thetaMC_fixAlens, "o")
+  plt.plot(np.full_like(chi2_P_thetaMC_Alens, 2), chi2_P_thetaMC_Alens, "o")
+  plt.plot(np.full_like(chi2_P_H0_fixAlens, 3), chi2_P_H0_fixAlens, "o")
+  plt.plot(np.full_like(chi2_P_H0_Alens, 4), chi2_P_H0_Alens, "o")
+
+  plt.xticks([1, 2, 3, 4],
+             [r"$\theta_{\rm MC}$ + fix $\mathrm{A}_\mathrm{L}$",
+              r"$\theta_{\rm MC} + \mathrm{A}_\mathrm{L}$",
+              r"$H_0$ + fix $\mathrm{A}_\mathrm{L}$",
+              r"$H_0 + \mathrm{A}_\mathrm{L}$"])
+  plt.ylabel(r"$\chi^2-\chi^2_{\rm min}$")
+
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[133]:
+: Text(0,0.5,'$\\chi^2-\\chi^2_{\\rm min}$')
+[[file:./obipy-resources/V0Fj87.png]]
+:end:
+
+*** Comparison of the variances
+
+#+BEGIN_SRC ipython :session :results none
+  def get_stds(lmin=50, lmax=3000, nvar=6):
+      return np.std(params_SO[lmax][:, :nvar], axis=0), np.std(params_P[lmax][:,:nvar], axis=0)
+
+  stds_SO = np.empty((np.alen(lmaxs), nvar))
+  stds_P = np.empty((np.alen(lmaxs), nvar))
+  for i, lmax in enumerate(lmaxs):
+      std_SO, std_P = get_stds(lmin, lmax, nvar)
+      stds_SO[i] = std_SO
+      stds_P[i] = std_P
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  for i in range(nvar):
+      plt.plot(lmaxs, stds_SO[:, i]/stds_SO[0, i], "-o", label=labels[i])
+
+  plt.xlabel(r"$\ell_{\rm max}$")
+  plt.ylabel(r"$\sigma/\sigma_{500}$")
+  plt.title(r"SO standard deviation")
+  plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+#+RESULTS:
+:results:
+# Out[28]:
+: <matplotlib.legend.Legend at 0x7f0db1cbda90>
+[[file:./obipy-resources/6FeXYp.png]]
+:end:
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  for i in range(nvar):
+      plt.plot(lmaxs, stds_P[:, i]/stds_P[0, i], "-o", label=labels[i])
+
+  plt.xlabel(r"$\ell_{\rm max}$")
+  plt.ylabel(r"$\sigma/\sigma_{500}$")
+  plt.title(r"Planck standard deviation")
+  plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[29]:
+: <matplotlib.legend.Legend at 0x7f0dadb6cd30>
+[[file:./obipy-resources/RGBkG2.png]]
+:end:
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  for i in range(nvar):
+      plt.plot(lmaxs, stds_SO[:, i]/stds_P[:, i], "-o", label=labels[i])
+
+  plt.xlabel(r"$\ell_{\rm max}$")
+  plt.ylabel(r"$\sigma_{SOxSO}/\sigma_{PxP}$")
+  plt.legend(loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[30]:
+: <matplotlib.legend.Legend at 0x7f0dae3e2710>
+[[file:./obipy-resources/BTJE15.png]]
+:end:
+
+*** Correlation of cosmo. parameters /vs./ \ell_{max}
+#+BEGIN_SRC ipython :session :results raw drawer
+  labels = [r"$H_0$",
+            r"$\log(10^{10}A_\mathrm{s})$",
+            r"$n_\mathrm{s}$",
+            r"$\Omega_\mathrm{b}h^2$",
+            r"$\Omega_\mathrm{c}h^2$",
+            r"$\mathrm{A}_\mathrm{L}$"]
+  corr_coeffs_P = np.empty((nvar, np.alen(lmaxs), nvar))
+  corr_coeffs_SO = np.empty((nvar, np.alen(lmaxs), nvar))
+  for i, lmax in enumerate(lmaxs):
+      corr_coeff_P = np.corrcoef(params_P[lmax].T)
+      corr_coeff_SO = np.corrcoef(params_SO[lmax].T)
+      for j in range(nvar):
+          corr_coeffs_P[j, i] = corr_coeff_P[j][:-2]
+          corr_coeffs_SO[j, i] = corr_coeff_SO[j][:-2]
+
+  fig, ax = plt.subplots(2, 3, sharey=True, sharex=True, figsize=(10,6))
+  for i in range(nvar):
+      ax[i//3, i%3].plot(lmaxs, corr_coeffs_P[i], "o-")
+      ax[0, -1].plot([], [], label=labels[i], color="C{}".format(i))
+
+  fig.tight_layout()
+  fig.text(0.5, -0.02, r"$\ell_{\rm max}$", ha="center", size=14)
+  fig.text(-0.02, 0.5, r"$R_{xy}$", va="center", rotation="vertical", size=14)
+  fig.text(0.5, 1, r"PxP", va="center", size=14)
+  ax[0, -1].legend(loc="upper left", bbox_to_anchor=(1,1))
+
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[38]:
+: <matplotlib.legend.Legend at 0x7fcccf4b9e48>
+[[file:./obipy-resources/IxszcK.png]]
+:end:
+
+#+BEGIN_SRC ipython :session :results raw drawer
+    fig, ax = plt.subplots(2, 3, sharey=True, sharex=True, figsize=(10,6))
+    for i in range(nvar):
+        ax[i//3, i%3].plot(lmaxs, corr_coeffs_SO[i], "o-")
+        ax[0, -1].plot([], [], label=labels[i], color="C{}".format(i))
+
+    fig.tight_layout()
+    fig.text(0.5, -0.02, r"$\ell_{\rm max}$", ha="center", size=14)
+    fig.text(-0.02, 0.5, r"$R_{xy}$", va="center", rotation="vertical", size=14)
+    fig.text(0.5, 1, r"SOxSO", va="center", size=14)
+    ax[0, -1].legend(loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[39]:
+ : <matplotlib.legend.Legend at 0x7fccd44c1be0>
+[[file:./obipy-resources/5ETQte.png]]
+:end:
+
+*** Correlation matrices
+#+BEGIN_SRC ipython :session :results none
+  lmin = 50
+  lmaxs = [750, 1500, 3000]
+  params_P = {}
+  params_SO = {}
+  params_SOxP = {}
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/correlation_matrix/"
+  for lmax in lmaxs:
+      params_P[lmax]  = get_params(output_base + "results_lmin{}_lmax{}_PxP_*".format(lmin, lmax), "*.likelihood")
+      params_SO[lmax] = get_params(output_base + "results_lmin{}_lmax{}_SOxSO_*".format(lmin, lmax), "*.likelihood")
+      params_SOxP[lmax]  = get_params(output_base + "results_lmin{}_lmax{}_SOxP_*".format(lmin, lmax), "*.likelihood")
+      print(lmax, params_P[lmax].shape, params_SO[lmax].shape, params_SOxP[lmax].shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :results none
+  labels = [
+    r"$\theta_\mathrm{MC}$",
+    r"$\log(10^{10}A_\mathrm{s})$",
+    r"$n_\mathrm{s}$",
+    r"$\Omega_\mathrm{b}h^2$",
+    r"$\Omega_\mathrm{c}h^2$",
+    r"$\mathrm{A}_\mathrm{L}$",
+    r"$A_S$",
+    r"$H_0$",
+    r"$\chi^2-\chi^2_\mathrm{min}$"]
+
+  def plot_minimization_distribution(params):
+    from getdist import plots, MCSamples
+    samples = MCSamples(samples=params, names=labels)
+    g = plots.getSubplotPlotter()
+    g.settings.colormap = "inferno"
+    g.triangle_plot(samples, params=labels, shaded=True)
+
+    ref = [0.0104085, 3.044, 0.9649, 0.02237, 0.1200, 1.0, np.exp(3.044)/1e10, 67.36]
+    for i, r in enumerate(ref):
+      kwargs = dict(color="gray", ls="--", lw=1)
+      for ax in g.subplots[:,i]:
+        if ax: ax.axvline(r, **kwargs)
+      for ax in g.subplots[i,:i]:
+        if ax: ax.axhline(r, **kwargs)
+    return samples
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  samples = plot_minimization_distribution(params_SOxP[750])
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[7]:
+[[file:./obipy-resources/uLyWKd.png]]
+:end:
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  fisher = {}
+  fisher[750] = np.array([2.594838237812317e-05, 0.017560000164131256, 0.030566465711409373, 0.000978442350299659, 0.008173529810644575, 0.8648195038180473])
+  fisher[1500] = np.array([7.2387579903814184e-06, 0.008889021975948657, 0.00917487752126064, 0.0003546333574293694, 0.003597119918133382, 0.12172060190582654])
+  fisher[3000] = np.array([5.509955450251826e-06, 0.007142331825784332, 0.0064611131716016176, 0.00023077117354014425, 0.002810559755895622, 0.07295249635085933])
+  x = np.arange(0, len(fisher[lmax]))
+  for i, lmax in enumerate(lmaxs):
+      y = (np.std(params_P[lmax], axis=0)[:len(fisher[lmax])] - fisher[lmax])/fisher[lmax]*100
+      plt.plot(x, y, "oC{}".format(i), label="{}".format(lmax))
+      y = (np.std(params_SO[lmax], axis=0)[:len(fisher[lmax])] - fisher[lmax])/fisher[lmax]*100
+      plt.plot(x, y, "sC{}".format(i))
+      y = (np.std(params_SOxP[lmax], axis=0)[:len(fisher[lmax])] - fisher[lmax])/fisher[lmax]*100
+      plt.plot(x, y, "^C{}".format(i))
+
+  plt.xticks(x, labels[:len(fisher[750])])
+  plt.ylabel(r"$\Delta\sigma$ [%]")
+  plt.plot([], [], "ok", label="PxP")
+  plt.plot([], [], "sk", label="SOxSO")
+  plt.plot([], [], "^k", label="SOxP")
+  plt.legend(ncol=2, loc="upper left", bbox_to_anchor=(1,1))
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[12]:
+: <matplotlib.legend.Legend at 0x7fefa636eeb8>
+[[file:./obipy-resources/mB97gd.png]]
+:end:
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  labels = [
+    r"$H_0$",
+    r"$n_\mathrm{s}$",
+    r"$\Omega_\mathrm{b}h^2$",
+    r"$\Omega_\mathrm{c}h^2$",
+    r"$\mathrm{A}_\mathrm{L}$"]
+
+  n = len(labels)
+  nl = len(lmaxs)
+
+  fig, ax = plt.subplots(nrows=1, ncols=3, sharex=True, figsize=(26,26))
+
+  for i, lmax in enumerate(lmaxs):
+      # Swap H0 as first and delete useless columns
+      P = np.copy(params_P[lmax])
+      SO = np.copy(params_SO[lmax])
+      SOxP = np.copy(params_SOxP[lmax])
+      P[:, 0] = P[:, 7]
+      SO[:, 0] = SO[:, 7]
+      SOxP[:, 0] = SOxP[:, 7]
+      P = np.delete(P, [1, 6, 7, 8], axis=1)
+      SO = np.delete(SO, [1, 6, 7, 8], axis=1)
+      SOxP = np.delete(SOxP, [1, 6, 7, 8], axis=1)
+
+      rxx_data = np.concatenate([P, SOxP, SO], axis=1)
+
+      # Rxx = np.corrcoef(P, SO, rowvar=False)
+      Rxx = np.corrcoef(rxx_data, rowvar=False)
+      im = ax[i].imshow(Rxx, cmap=plt.cm.RdBu, vmin=-1, vmax=+1)
+      ns = rxx_data.shape[1]//n
+      ax[i].set_xticks(np.arange(0, ns*n))
+      ax[i].set_xticklabels(ns*labels, fontsize=12)
+      ax[i].set_yticks(np.arange(0, ns*n))
+      ax[i].set_yticklabels([])
+      ax[i].axvline(4.5, linestyle="--", color="black")
+      ax[i].axvline(9.5, linestyle="--", color="black")
+      ax[i].axhline(4.5, linestyle="--", color="black")
+      ax[i].axhline(9.5, linestyle="--", color="black")
+
+  ax[0].set_yticklabels(ns*labels, fontsize=12)
+  ax[-1].set_yticklabels(ns*labels, fontsize=12)
+  ax[-1].yaxis.tick_right()
+  ax[-1].yaxis.set_ticks_position("both")
+
+  fig.subplots_adjust(wspace=0.05)
+
+  # cbar_ax = fig.add_axes([0.95, 0.375, 0.01, 0.25])
+  # cbar = fig.colorbar(im, cax=cbar_ax)
+  # cbar.ax.tick_params(labelsize=12)
+  # cbar.set_label("correlation", fontsize=14)
+
+  cbar_ax = fig.add_axes([0.21, 0.32, 0.61, 0.015])
+  cbar = fig.colorbar(im, cax=cbar_ax, orientation="horizontal")
+  cbar.ax.tick_params(labelsize=12)
+  cbar.set_label("correlation", fontsize=14)
+
+  kwargs1 = dict(xycoords='axes fraction', arrowprops=dict(arrowstyle='|-|, widthA=0.2, widthB=0.2', color="black"))
+  kwargs2 = dict(transform=ax[0].transAxes, color="black")
+
+  survey = ["PxP", "SOxP", "SOxSO"]
+  ns = len(survey)
+  for i in range(ns):
+      ax[0].annotate("", xy=(i/ns, 1.05), xytext=((i+1)/ns, 1.05), **kwargs1)
+      ax[0].annotate("", xy=(-0.1, i/ns), xytext=(-0.1, (i+1)/ns), **kwargs1)
+      ax[0].text((2*i+1)/(2*ns), 1.05, survey[i], **kwargs2, ha="center", va="bottom", fontsize=14)
+      ax[0].text(-0.1, (2*i+1)/(2*ns), survey[ns-i-1], **kwargs2, va="center", ha="right", rotation=90, fontsize=14)
+
+  for i in range(nl):
+    # ax[i].annotate("", xy=(-0.15, 1.0), xytext=(-0.15, 0.0), **kwargs1)
+    ax[i].text(0.5, -0.1, r"$\ell_\mathrm{max}$ = " + str(lmaxs[i]),
+               transform=ax[i].transAxes, ha="center", fontsize=14)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[14]:
+[[file:./obipy-resources/Pnz3CA.png]]
+:end:
+
+** Correlation of spectra
+#+BEGIN_SRC ipython :session :results none
+  import matplotlib.pyplot as plt
+  import numpy as np
+  import pickle
+
+  def load_spectra(path, pattern="*.pkl", nell=0):
+      import os, glob
+      all_files = glob.glob(os.path.join(path, pattern))
+      # Sort alphabetically
+      all_files.sort()
+      Dls = np.empty((len(all_files), nell))
+      for i, f in enumerate(all_files):
+          Dl = pickle.load(open(f, "rb"))["setup"]["simulation"]["Dl"]
+          Dls[i] = Dl
+
+      return Dls.T
+#+END_SRC
+
+#+BEGIN_SRC ipython :session :results raw drawer
+  nell = 3000 - 50
+  output_base = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/correlation_matrix/"
+  Dl_P = load_spectra(output_base + "results_lmin50_lmax{}_PxP_*".format(nell+50), nell=nell)
+  Dl_SO = load_spectra(output_base + "results_lmin50_lmax{}_SOxSO_*".format(nell+50), nell=nell)
+  corrcoeffs = np.empty((nell))
+  for ell in range(nell):
+    corrcoeffs[ell] = np.corrcoef(Dl_P[ell], Dl_SO[ell])[0, 1]
+
+  ells = np.arange(50, 50+nell)
+  plt.plot(ells, corrcoeffs)
+  plt.xlabel(r"$\ell$")
+  plt.ylabel(r"$R_{D_\ell^{PxP},\,D_\ell^{SOxSO}}$")
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[78]:
+: Text(0,0.5,'$R_{D_\\ell^{PxP},\\,D_\\ell^{SOxSO}}$')
+[[file:./obipy-resources/m1f6BV.png]]
 :end:
 
 * MCMC analysis
-#+BEGIN_SRC ipython :session bcv :results none
+#+BEGIN_SRC ipython :session :results none
+  import pandas as pd
   def get_chains(path):
       import glob
       all_files = glob.glob(path)
@@ -457,34 +1081,34 @@ Set PxP deviation as standard for further comparison
           delta_chi2 = df.chi2-np.min(df.chi2)
 
           # Remove useless columns
-          df.drop(columns=["minuslogpost", "minuslogprior", "minuslogprior__0", "chi2", "chi2__chi2"], inplace=True)
+          df.drop(columns=["minuslogpost", "minuslogprior", "minuslogprior__0", "chi2", "chi2__chi2", "As"], inplace=True)
           # Insert Delta chi2 before As (which is derived and never plot)
-          df.insert(value=delta_chi2, column="delta_chi2", loc=len(df.columns)-1)
+          df.insert(value=delta_chi2, column="delta_chi2", loc=len(df.columns))
           key = f.split("/")[-2]
           chains[key] = df
       return chains
 
-  ref = [1.04164/100, 3.058, 0.9649, 0.02212, 0.1210, 1]
+  ref = [0.0104085, 3.044, 0.9649, 0.02237, 0.1200, 1, 67.36]
   def plot_chains(path, burnin=0, labels=labels):
-      if "$H_0$" in labels:
-        ref[0] = 67.5
       chains = get_chains(path=path)
       plt.figure(figsize=(18, 10))
-      for i in range(1, len(labels)):
+      for i in range(1, len(labels)+1):
           plt.subplot(2, 4, i)
           plt.ylabel(labels[i-1])
           for k, v in chains.items():
               j = k.split("_")[-1]
               n = np.arange(len(v))
+              ist = 0
               if 0 < burnin < 1:
                   ist = int((1.-burnin)*len(v))
               else:
                   ist = int(burnin)
               plt.plot(n[ist:], v.iloc[:,i][ist:], alpha=0.75, color="C{}".format(j))
-          if i != len(labels)-1:
+          if i != len(labels):
               plt.axhline(ref[i-1], color="gray", ls="--", lw=1)
+          else:
+              plt.legend(list(chains.keys()), loc="upper left", bbox_to_anchor=(1,1))
       plt.subplots_adjust(hspace=0.25, wspace=0.3)
-      plt.legend([k.replace("_", "\_") for k in chains.keys()], loc="upper left", bbox_to_anchor=(1,1))
 #+END_SRC
 
 ** Understanding MCMC /à la/ cobaya
@@ -1094,7 +1718,7 @@ Get Hessians from minimizations
 :end:
 
 ** \Lambda CDM + H0
-#+BEGIN_SRC ipython :session bcv :results none
+#+BEGIN_SRC ipython :session :results none
   labels = [r"$H_0$",
             r"$\log(10^{10}A_\mathrm{s})$",
             r"$n_\mathrm{s}$",
@@ -1175,68 +1799,166 @@ Get Hessians from minimizations
 :end:
 **** SOxSO + PxP - 2SOxP
 #+BEGIN_SRC ipython :session bcv :results raw drawer
+  plot_chains(result_path + "/*_SOxSO+PxP-2SOxP_*/mcmc*.txt", burnin=0.3, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[18]:
+[[file:./obipy-resources/T82cB5.png]]
+:end:
+
+** \Lambda CDM + ALens + H0 derived from \theta_{MC}
+#+BEGIN_SRC ipython :session :results none
+  labels = [
+    r"$\theta_\mathrm{MC}$",
+    r"$\log(10^{10}A_\mathrm{s})$",
+    r"$n_\mathrm{s}$",
+    r"$\Omega_\mathrm{b}h^2$",
+    r"$\Omega_\mathrm{c}h^2$",
+    r"$\mathrm{A}_\mathrm{L}$",
+    # r"$A_S$",
+    r"$H_0$",
+    r"$\chi^2-\chi^2_\mathrm{min}$"]
+
+  result_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output/mcmc_derived_H0"
+#+END_SRC
+*** Check chains
+**** PxP
+#+BEGIN_SRC ipython :session :results raw drawer
+  plot_chains(result_path + "/*_PxP_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[81]:
+[[file:./obipy-resources/ax20fh.png]]
+:end:
+**** SOxSO
+#+BEGIN_SRC ipython :session :results raw drawer
+  plot_chains(result_path + "/*_SOxSO_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[82]:
+[[file:./obipy-resources/SX1zBy.png]]
+:end:
+
+**** SOxP
+#+BEGIN_SRC ipython :session :results raw drawer
+  plot_chains(result_path + "/*_SOxP_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[83]:
+[[file:./obipy-resources/Ok4jHj.png]]
+:end:
+
+**** SOxSO - PxP
+#+BEGIN_SRC ipython :session :results raw drawer
+  plot_chains(result_path + "/*_SOxSO-PxP_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[84]:
+[[file:./obipy-resources/Noyq7R.png]]
+:end:
+
+**** SOxP - PxP
+#+BEGIN_SRC ipython :session :results raw drawer
+  plot_chains(result_path + "/*_SOxP-PxP_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[85]:
+[[file:./obipy-resources/CjFP4N.png]]
+:end:
+
+**** SOxP - SOxSO
+#+BEGIN_SRC ipython :session :results raw drawer
+  plot_chains(result_path + "/*_SOxP-SOxSO_*/mcmc*.txt", burnin=0, labels=labels)
+#+END_SRC
+
+#+RESULTS:
+:results:
+# Out[86]:
+[[file:./obipy-resources/MpMnLM.png]]
+:end:
+
+**** SOxSO + PxP -2SOxP
+#+BEGIN_SRC ipython :session :results raw drawer
   plot_chains(result_path + "/*_SOxSO+PxP-2SOxP_*/mcmc*.txt", burnin=0, labels=labels)
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[56]:
-[[file:./obipy-resources/UjmnoG.png]]
+# Out[87]:
+[[file:./obipy-resources/P6nGlb.png]]
 :end:
 
 * Comparison with Planck 2018 results
 
-#+BEGIN_SRC ipython :session bcv :results raw drawer
+#+BEGIN_SRC ipython :session :results raw drawer
   from getdist import loadMCSamples, plots, MCSamples
 
   def get_mean_diffs(path, cols):
       # Variable names
       renames = [r"$\Delta{}H_0~[\textrm{km/s}]$",
-                 r"$\log(10^{10}A_\mathrm{s})$",
+                 # r"$\log(10^{10}A_\mathrm{s})$",
                  r"$\Delta{}n_\mathrm{s}$",
                  r"$\Delta\Omega_\mathrm{b}h^2$",
                  r"$\Delta\Omega_\mathrm{c}h^2$",
                  r"$\Delta\mathrm{A}_\mathrm{L}$"]
       # Load MC Samples
-      tmp = loadMCSamples(path)
+      tmp = loadMCSamples(path, no_cache=True, settings={"ignore_rows": 0.4})
 
       # Get mean diffs as arrays
       mean_diffs = tmp.mean_diffs()
 
       # Keep only interesting columns i.e. cosmo; parameters
       mean_diffs = [mean_diffs[i] for i in cols]
-      return MCSamples(samples=mean_diffs, names=renames, ignore_rows=0.3)
+      return MCSamples(samples=mean_diffs, names=renames)
 
 
   output_path = r"/home/garrido/Workdir/CMB/analysis/beyondCV/output"
 
   # Planck 2018
   path = output_path + r"/COM_CosmoParams_fullGrid_R3.00/base_Alens/plikHM_TT_lowl_lowE/base_Alens_plikHM_TT_lowl_lowE"
-  cols = [22, 5, 6, 0, 1, 4]
+  # cols = [22, 5, 6, 0, 1, 4]
+  cols = [22, 6, 0, 1, 4]
   samples = [get_mean_diffs(path, cols)]
 
   # BeyondCV output
-  mcmc_survey= ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
-  cols = range(0,6)
-  for survey in mcmc_survey:
-      path = output_path + r"/H0_old/results_{}_667_2/mcmc".format(survey)
+  mcmc_survey= {"PxP"             : 2,
+                "SOxSO"           : 2,
+                "SOxSO-PxP"       : 3,
+                "SOxP-PxP"        : 4,
+                "SOxP-SOxSO"      : 2,
+                "SOxSO+PxP-2SOxP" : 4}
+  cols = [7, 2, 3, 4, 5]
+  for survey, chain in mcmc_survey.items():
+      path = output_path + r"/mcmc_derived_H0/results_{}_666_{}/mcmc".format(survey, chain)
       samples += [get_mean_diffs(path, cols)]
 
   g = plots.getSubplotPlotter()
   g.settings.lineM = ["--gray"] + ["-C{}".format(i) for i in range(10)]
   g.triangle_plot(samples, legend_labels=[])
-  g.add_legend(["Planck 2018"] + mcmc_survey, colored_text=True, figure=True, align_right=True)
+  g.add_legend(["Planck 2018"] + list(mcmc_survey.keys()), colored_text=True, figure=True, align_right=True)
   #  g.export("triangle_plot.pdf")
 #+END_SRC
 
 #+RESULTS:
 :results:
-# Out[68]:
-: <matplotlib.legend.Legend at 0x7f1a3663eda0>
-[[file:./obipy-resources/UGso8L.png]]
+# Out[90]:
+: <matplotlib.legend.Legend at 0x7fc1e0be0898>
+[[file:./obipy-resources/rLIRFD.png]]
 :end:
 
-#+BEGIN_SRC ipython :session bcv :results raw drawer
+#+BEGIN_SRC ipython :session :results raw drawer
   import numpy as np
   from getdist import loadMCSamples
 
@@ -1256,20 +1978,22 @@ Get Hessians from minimizations
   planck2018 = np.array([loadMCSamples(path).getVars()[i] for i in cols])
 
   # BeyondCV output
-  surveys = ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO"]
+  surveys = ["PxP", "SOxSO", "SOxSO-PxP", "SOxP-PxP", "SOxP-SOxSO", "SOxSO+PxP-2SOxP"]
+  cols = [7, 1, 2, 3, 4, 5]
   x = np.arange(len(xlabels))
   for s, survey in enumerate(surveys):
-      path = output_path + r"/H0_old/results_{}_667_2/mcmc".format(survey)
-      a = np.array([loadMCSamples(path, settings={"ignore_rows": 0.3}).getVars()[i] for i in range(0,6)])
+      path = output_path + r"/mcmc_derived_H0/results_{}_666_{}/mcmc".format(survey, mcmc_survey[survey])
+      a = np.array([loadMCSamples(path, settings={"ignore_rows": 0.4}).getVars()[i] for i in cols])
       if s == 0:
           pxp = planck2018 #a
       y = np.sqrt(pxp/a)
+      print(survey, np.sqrt(a))
       plt.plot(x, y, "o", label=survey, color="C{}".format(s))
       # plt.axhline(np.mean(y), color="C{}".format(s), ls="--", lw=1)
 
   plt.xticks(x, xlabels)
-  plt.ylabel(r"$\sigma{\rm(Planck~2018)}/\sigma{\rm(residuals)}$")
-  plt.ylim(0,15)
+  plt.ylabel(r"$\sigma{\rm (Planck 2018)}/\sigma{\rm (residuals)}$")
+  #plt.ylim(0,15)
   leg = plt.legend(loc="upper left", bbox_to_anchor=(1,1))
   for i, text in enumerate(leg.get_texts()):
     text.set_color("C{}".format(i))
@@ -1277,9 +2001,32 @@ Get Hessians from minimizations
 
 #+RESULTS:
 :results:
-# Out[58]:
-[[file:./obipy-resources/ZhSeJj.png]]
+# Out[102]:
+[[file:./obipy-resources/L1O3bH.png]]
 :end:
+
+|-----------------+-------------+----------------+-------------+-------------+-------------+-------------|
+|                 |          H0 | log(10^{10}As) |          ns |    \omega_b |    \omega_c |          AL |
+|-----------------+-------------+----------------+-------------+-------------+-------------+-------------|
+| PxP             |  0.93255402 |     2.49066446 |  1.05577509 |  1.15234731 |  0.86194105 |  1.17551905 |
+| SOxSO           |  1.05281827 |     2.72998524 |  1.19484862 |  1.34476173 |    0.959298 |  1.44858526 |
+| SOxSO-PxP       |  4.57605924 |     14.0318481 |  4.37597586 |   5.0700229 |  4.54500663 |   4.2443415 |
+| SOxP-PxP        |  8.79996857 |    26.85164185 |  8.09104811 |      9.6115 |  8.78887334 |  8.13562102 |
+| SOxP-SOxSO      |   9.3887416 |    28.01967011 |  8.94262101 | 10.63241334 |  9.24735455 |  9.20433168 |
+| SOxSO+PxP-2SOxP | 33.34609892 |    121.0552643 | 27.33891935 | 36.29531562 | 35.45656894 | 32.63120982 |
+
+
+|-----------------+----------------+----------------+----------------+----------------+----------------+----------------|
+|                 |             H0 |             ns | log(10^{10}As) |       \omega_b |       \omega_c |             AL |
+|-----------------+----------------+----------------+----------------+----------------+----------------+----------------|
+| Planck 2018     | 1.18658546e+00 | 1.81103635e-02 | 7.06064590e-03 | 2.89176738e-04 | 2.46748133e-03 | 9.57233337e-02 |
+| PxP             | 1.27240399e+00 | 7.27129798e-03 | 6.68764207e-03 | 2.50945819e-04 | 2.86270310e-03 | 8.14306951e-02 |
+| SOxSO           | 1.12705630e+00 | 6.63386864e-03 | 5.90923884e-03 | 2.15039386e-04 | 2.57217395e-03 | 6.60805660e-02 |
+| SOxSO-PxP       | 2.59302907e-01 | 1.29066131e-03 | 1.61350202e-03 | 5.70365744e-05 | 5.42899390e-04 | 2.25531649e-02 |
+| SOxP-PxP        | 1.34839739e-01 | 6.74460190e-04 | 8.72649106e-04 | 3.00865357e-05 | 2.80750585e-04 | 1.17659529e-02 |
+| SOxP-SOxSO      | 1.26383866e-01 | 6.46344635e-04 | 7.89549942e-04 | 2.71976577e-05 | 2.66831051e-04 | 1.03998136e-02 |
+| SOxSO+PxP-2SOxP | 3.55839364e-02 | 1.49604097e-04 | 2.58263533e-04 | 7.96732948e-06 | 6.95916555e-05 | 2.93349018e-03 |
+
 
 ** Comparison between different SO sensitivity mode
 #+BEGIN_SRC ipython :session bcv :results raw drawer
