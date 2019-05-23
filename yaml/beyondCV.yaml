@@ -19,10 +19,6 @@ experiment:
   lmax : 3000
   fsky : 0.4
 
-  survey:
-    - Planck
-    - SO
-
   freq_Planck: [100, 143, 217] # GHz
   noise_Planck: [77.4, 33.0, 46.8]
   beam_Planck: [9.66, 7.22, 4.90]
@@ -30,6 +26,9 @@ experiment:
   freq_all_SO: [27, 39, 93, 145, 225, 280] # GHz
   freq_SO: [93, 145, 225] # GHz
   sensitivity_mode_SO: 1 #  0: threshold, 1: baseline, 2: goal
+
+  freq_Planck_selected: all # 100, 143, 217, all
+  freq_SO_selected: all # 93, 145, 225, all
 
 # Cobaya setup
 cobaya:

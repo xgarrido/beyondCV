@@ -36,12 +36,15 @@ def simulation(setup):
         DNl[key] = DNl_array_SO[freq]*ns[key]
 
     fsky = experiment["fsky"]
-    covmat_SSSS = utils.cov("SO_all", "SO_all", "SO_all", "SO_all", ns, ls, Dl, DNl, fsky)
-    covmat_SSSP = utils.cov("SO_all", "SO_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-    covmat_SSPP = utils.cov("SO_all", "SO_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-    covmat_SPSP = utils.cov("SO_all", "Planck_all", "SO_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-    covmat_SPPP = utils.cov("SO_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
-    covmat_PPPP = utils.cov("Planck_all", "Planck_all", "Planck_all", "Planck_all", ns, ls, Dl, DNl, fsky)
+    SO_freq = "SO_{}".format(experiment["freq_SO_selected"])
+    Planck_freq = "Planck_{}".format(experiment["freq_Planck_selected"])
+
+    covmat_SSSS = utils.cov(SO_freq, SO_freq, SO_freq, SO_freq, ns, ls, Dl, DNl, fsky)
+    covmat_SSSP = utils.cov(SO_freq, SO_freq, SO_freq, Planck_freq, ns, ls, Dl, DNl, fsky)
+    covmat_SSPP = utils.cov(SO_freq, SO_freq, Planck_freq, Planck_freq, ns, ls, Dl, DNl, fsky)
+    covmat_SPSP = utils.cov(SO_freq, Planck_freq, SO_freq, Planck_freq, ns, ls, Dl, DNl, fsky)
+    covmat_SPPP = utils.cov(SO_freq, Planck_freq, Planck_freq, Planck_freq, ns, ls, Dl, DNl, fsky)
+    covmat_PPPP = utils.cov(Planck_freq, Planck_freq, Planck_freq, Planck_freq, ns, ls, Dl, DNl, fsky)
 
     survey = experiment["survey"]
     if survey in ["SOxSO", "SOxP", "PxP"]:
